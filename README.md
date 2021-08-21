@@ -21,7 +21,7 @@ python_version >= '3.8'
 
 # Citing
 
-@INPROCEEDINGS{Ushijima-Mwesigwa2017,
+ @INPROCEEDINGS{Ushijima-Mwesigwa2017,
   title     = "Graph Partitioning Using Quantum Annealing on the {D-Wave}
                System",
   booktitle = "Proceedings of the Second International Workshop on Post Moores
@@ -35,7 +35,7 @@ python_version >= '3.8'
   location  = "Denver, CO, USA"
 }
 
-@ARTICLE{Negre2020,
+ @ARTICLE{Negre2020,
   title    = "Detecting Multiple Communities Using Quantum Annealing on the
               {D-Wave} System",
   author   = "Negre, Christian F A and Ushijima-Mwesigwa, Hayato and
@@ -47,7 +47,7 @@ python_version >= '3.8'
   year     =  2020
 }
 
-@article{Mniszewski2021,
+ @ARTICLE{Mniszewski2021,
    author = {Mniszewski, Susan M. and Dub, Pavel A. and Tretiak, Sergei and Anisimov, Petr M. and Zhang, Yu and Negre, Christian F. A.},
    title = {Reduction of the molecular hamiltonian matrix using quantum community detection},
    journal = {Sci. Rep.},
