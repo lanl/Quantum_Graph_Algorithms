@@ -21,45 +21,40 @@ python_version >= '3.8'
 
 # Citing
 
- @INPROCEEDINGS{Ushijima-Mwesigwa2017,
-  title     = "Graph Partitioning Using Quantum Annealing on the {D-Wave}
-               System",
-  booktitle = "Proceedings of the Second International Workshop on Post Moores
-               Era Supercomputing (PMES'17)",
-  author    = "Ushijima-Mwesigwa, Hayato and Negre, Christian F A and
-               Mniszewski, Susan M",
-  publisher = "ACM New York, NY, USA",
-  pages     = "22--29",
-  year      =  2017,
-  keywords  = "Community detection, Graph-partitioning, Quantum Annealing",
-  location  = "Denver, CO, USA"
-}
+    @INPROCEEDINGS{Ushijima-Mwesigwa2017,
+  	title     = "Graph Partitioning Using Quantum Annealing on the {D-Wave} System",
+  	booktitle = "Proceedings of the Second International Workshop on Post Moores Era Supercomputing (PMES'17)",
+  	author    = "Ushijima-Mwesigwa, Hayato and Negre, Christian F A and Mniszewski, Susan M",
+  	publisher = "ACM New York, NY, USA",
+  	pages     = "22--29",
+  	year      =  2017,
+  	keywords  = "Community detection, Graph-partitioning, Quantum Annealing",
+  	location  = "Denver, CO, USA"
+    }
 
- @ARTICLE{Negre2020,
-  title    = "Detecting Multiple Communities Using Quantum Annealing on the
-              {D-Wave} System",
-  author   = "Negre, Christian F A and Ushijima-Mwesigwa, Hayato and
-              Mniszewski, Susan M",
-  journal  = "PLOS ONE",
-  volume   = 15,
-  number   = 2,
-  pages    = "e0227538",
-  year     =  2020
-}
+    @ARTICLE{Negre2020,
+  	title    = "Detecting Multiple Communities Using Quantum Annealing on the {D-Wave} System",
+  	author   = "Negre, Christian F A and Ushijima-Mwesigwa, Hayato and Mniszewski, Susan M",
+  	journal  = "PLOS ONE",
+  	volume   = 15,
+  	number   = 2,
+  	pages    = "e0227538",
+  	year     =  2020
+    }
 
- @ARTICLE{Mniszewski2021,
-   author = {Mniszewski, Susan M. and Dub, Pavel A. and Tretiak, Sergei and Anisimov, Petr M. and Zhang, Yu and Negre, Christian F. A.},
-   title = {Reduction of the molecular hamiltonian matrix using quantum community detection},
-   journal = {Sci. Rep.},
-   volume = {11},
-   number = {1},
-   pages = {4099},
-   ISSN = {2045-2322},
-   DOI = {10.1038/s41598-021-83561-x},
-   url = {https://doi.org/10.1038/s41598-021-83561-x},
-   year = {2021},
-   type = {Journal Article}
-}
+    @ARTICLE{Mniszewski2021,
+   	author = {Mniszewski, Susan M. and Dub, Pavel A. and Tretiak, Sergei and Anisimov, Petr M. and Zhang, Yu and Negre, Christian F. A.},
+   	title = {Reduction of the molecular hamiltonian matrix using quantum community detection},
+   	journal = {Sci. Rep.},
+   	volume = {11},
+   	number = {1},
+   	pages = {4099},
+   	ISSN = {2045-2322},
+   	DOI = {10.1038/s41598-021-83561-x},
+   	url = {https://doi.org/10.1038/s41598-021-83561-x},
+   	year = {2021},
+   	type = {Journal Article}
+    }
 
 # Support acknowledgement
 
