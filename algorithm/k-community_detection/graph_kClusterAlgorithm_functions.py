@@ -2,6 +2,12 @@
 
 import matplotlib.pyplot as plt
 import re, os, sys
+
+from dwave_qbsolv import QBSolv
+from dwave.system.samplers import DWaveSampler
+from dwave.system.composites import FixedEmbeddingComposite
+import minorminer
+
 import networkx as nx
 from numpy import linalg as la
 from networkx.generators.atlas import *
@@ -12,6 +18,7 @@ import math
 from scipy.sparse import csr_matrix
 import argparse
 import logging
+
 
 #
 # The Quantum Graph Community Detection Algorithm has been described
@@ -137,6 +144,30 @@ def threshold_mmatrix(graph, mmatrix, threshold):
 
   return mmatrix
 
+
+def makeQubo(graph, modularity, beta, gamma, GAMMA, num_nodes, num_parts, num_blocks, threshold):
+
+  # Create QUBO matrix
+  qsize = num_blocks*num_nodes
+  Q = np.zeros([qsize,qsize])
+
+  # Note: weights are set to the negative due to maximization
+
+  # Set node weights
+  for i in range(qsize):
+    entry = get_i_j_entry(i, i, modularity, beta, gamma, GAMMA, graph, num_nodes, num_parts, num_blocks)
+    Q[i,i] = -entry
+
+  # Set off-diagonal weights
+  for i in range(qsize):
+    for j in range(i, qsize):
+      if i != j:
+        entry = get_i_j_entry(i, j, modularity, beta, gamma, GAMMA, graph, num_nodes, num_parts, num_blocks)
+        if abs(entry) > threshold:
+          Q[i,j] = -entry
+          Q[j,i] = -entry
+
+  return Q
 
 def write_qubo_file(graph, modularity, beta, gamma, GAMMA, num_nodes, num_parts, num_blocks, threshold):
 
@@ -268,14 +299,19 @@ def run_qbsolv():
   os.system(estring)
 
 
-def process_solution(graph, num_blocks, num_nodes, num_parts):
+def process_solution(ss, graph, num_blocks, num_nodes, num_parts):
 
-  bit_string = get_qubo_solution()
-  print (bit_string)
-  print ("num non-zeros: ", sum([int(i) for i in bit_string]))
+  qsol = {}
+  for i in range(num_blocks*num_nodes):
+    qsol[i] = int(ss[0,i])
+
+  qtotal = 0
+  for i in range(num_blocks*num_nodes):
+    qtotal += qsol[i]
+  print('\nnum non-zeros = ', qtotal)
 
   x_indx = {}
-  qubo_soln = [int(i) for i in bit_string]
+  qubo_soln = qsol
   for i in range(num_blocks*num_nodes):
     i_block_indx = get_block_number(i, num_blocks, num_nodes)
     i_indx_within_block = get_indx_within_block(i, num_nodes)
@@ -290,4 +326,45 @@ def process_solution(graph, num_blocks, num_nodes, num_parts):
       part_number[node] = part
 
   return part_number
+
+
+def getEmbedding():
+
+  subqubo_size = 64
+  qsystem = DWaveSampler()
+  k64 = nx.complete_graph(64).edges()
+  embedding = minorminer.find_embedding(k64, qsystem.edgelist)
+  print('\nembedding done')
+
+  return embedding
+
+
+def runDwave(Q, num_nodes, k, embedding):
+
+  # Using D-Wave/qbsolv
+  # Needed when greater than 64 nodes/variables
+  sampler  = FixedEmbeddingComposite(DWaveSampler(), embedding)
+
+  subqubo_size = 64
+  response = QBSolv().sample_qubo(Q, solver=sampler,
+                           solver_limit=subqubo_size)
+  print('\n qbsolv response:')
+  print(response)
+  ss = response.samples()
+  #print("\n qbsolv samples=" + str(list(response.samples())))
+  #print('\nss = ', ss)
+  print(flush=True)
+
+  return ss 
+
+def cluster(Q, k, embedding):
+
+  # Start with Q
+  qsize = Q.shape[1]
+  print('\n Q size = ', qsize)
+
+  # Cluster into k parts using DWave
+  ss = runDwave(Q, qsize, k, embedding)
+
+  return ss
 

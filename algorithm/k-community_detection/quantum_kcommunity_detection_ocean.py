@@ -16,7 +16,7 @@ import argparse
 import logging
 import urllib3
 
-import graphClusterAlgorithm_functions as QCD
+import graph_kClusterAlgorithm_functions as QCD
 import graphFileUtility_functions as GFU
 
 #
@@ -99,13 +99,16 @@ if __name__== '__main__':
   
   print ("threshold = ", threshold)
 
-  QCD.write_qubo_file(graph, modularity, beta, gamma, GAMMA, num_nodes, num_parts, num_blocks, threshold)
+  Q = QCD.makeQubo(graph, modularity, beta, gamma, GAMMA, num_nodes, num_parts, num_blocks, threshold)
 
-  # Run qbsolv/D-Wave
-  QCD.run_qbsolv()
+  # Create embedding for D-Wave
+  embedding = QCD.getEmbedding()
+
+  # Run k-clustering with qbsolv/D-Wave using ocean
+  ss = QCD.cluster(Q, num_parts, embedding)
 
   # Process solution
-  part_number = QCD.process_solution(graph, num_blocks, num_nodes, num_parts)
+  part_number = QCD.process_solution(ss, graph, num_blocks, num_nodes, num_parts)
 
   mmetric = QCD.calcModularityMetric(mtotal, modularity, part_number)
   print ("\nModularity metric = ", mmetric)
