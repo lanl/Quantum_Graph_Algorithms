@@ -370,7 +370,6 @@ def runDwave(Q, num_nodes, k, embedding):
   print('\n qbsolv response:')
   print(response)
   ss = response.samples()
-                                                              353,5         95%
   #print("\n qbsolv samples=" + str(list(response.samples())))
   #print('\nss = ', ss)
   print(flush=True)

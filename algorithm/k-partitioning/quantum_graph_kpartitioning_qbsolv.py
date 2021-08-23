@@ -11,7 +11,7 @@ import math
 import argparse
 from scipy.sparse import csr_matrix
 
-import graphPartitionAlgorithm_functions as QGP
+import graph_kPartitionAlgorithm_functions as QGP
 import graphFileUtility_functions as GFU
 
 #
