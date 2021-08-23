@@ -169,6 +169,7 @@ def makeQubo(graph, modularity, beta, gamma, GAMMA, num_nodes, num_parts, num_bl
 
   return Q
 
+
 def write_qubo_file(graph, modularity, beta, gamma, GAMMA, num_nodes, num_parts, num_blocks, threshold):
 
   ###qubo format
@@ -297,6 +298,30 @@ def run_qbsolv():
   estring = "qbsolv -r " + str(rval) + " -i graph.qubo -m -o dwave_output.out"
   print('\n', estring)
   os.system(estring)
+
+
+def process_solution_qbsolv(graph, num_blocks, num_nodes, num_parts):
+
+  bit_string =  get_qubo_solution()
+  print (bit_string)
+  print ("num non-zeros: ", sum([int(i) for i in bit_string]))
+
+  x_indx = {}
+  qubo_soln = [int(i) for i in bit_string]
+  for i in range(num_blocks*num_nodes):
+    i_block_indx = get_block_number(i, num_blocks, num_nodes)
+    i_indx_within_block = get_indx_within_block(i, num_nodes)
+    x_indx[(i_indx_within_block, i_block_indx)] = qubo_soln[i]
+
+  violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts)
+
+  part_number = {}
+  for key in x_indx:
+    node, part = key
+    if x_indx[key] == 1:
+      part_number[node] = part
+
+  return part_number
 
 
 def process_solution(ss, graph, num_blocks, num_nodes, num_parts):

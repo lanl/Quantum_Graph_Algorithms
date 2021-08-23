@@ -2,6 +2,12 @@
 
 import matplotlib.pyplot as plt
 import re, os, sys
+
+from dwave_qbsolv import QBSolv
+from dwave.system.samplers import DWaveSampler
+from dwave.system.composites import FixedEmbeddingComposite
+import minorminer
+
 import numpy as np
 import networkx as nx
 from numpy import linalg as la
@@ -96,6 +102,27 @@ def get_i_j_entry(i_indx, j_indx, laplacian, alpha, beta,gamma, GAMMA, graph, nu
     BG = get_entry_B_Gamma(i_indx, j_indx, laplacian, alpha, beta,gamma, GAMMA, num_nodes, num_parts, num_blocks)
 
     return bL + aI + BG
+
+
+def makeQubo(laplacian, alpha, beta, gamma, GAMMA, graph, num_nodes, num_parts, num_blocks):
+
+  # Create QUBO matrix
+  qsize = num_blocks*num_nodes
+  Q = np.zeros([qsize,qsize])
+
+  for i in range(qsize):
+    for j in range(i, qsize):
+      if i == j:
+        entry = get_i_j_entry(i, j, laplacian, alpha, beta, gamma, GAMMA, graph, num_nodes, num_parts, num_blocks)
+        Q[i,i] = entry
+      else:
+        entry = get_i_j_entry(i, j, laplacian, alpha, beta,gamma, GAMMA, graph, num_nodes, num_parts, num_blocks)
+        if entry > 1e-5 or entry < -1e-5:
+          #entry != 0
+          Q[i,j] = entry
+          Q[j,i] = entry
+
+  return Q
 
 
 def write_qubo_file(laplacian, alpha, beta, gamma, GAMMA, graph, num_nodes, num_parts, num_blocks):
@@ -318,3 +345,47 @@ def process_solution(graph, num_blocks, num_nodes, num_parts):
   print("num non zeros: ", sum([int(i) for i in bit_string]))
 
   return bit_string
+
+
+def getEmbedding():
+
+  subqubo_size = 64
+  qsystem = DWaveSampler()
+  k64 = nx.complete_graph(64).edges()
+  embedding = minorminer.find_embedding(k64, qsystem.edgelist)
+  print('\nembedding done')
+
+  return embedding
+
+
+def runDwave(Q, num_nodes, k, embedding):
+
+  # Using D-Wave/qbsolv
+  # Needed when greater than 64 nodes/variables
+  sampler  = FixedEmbeddingComposite(DWaveSampler(), embedding)
+
+  subqubo_size = 64
+  response = QBSolv().sample_qubo(Q, solver=sampler,
+                           solver_limit=subqubo_size)
+  print('\n qbsolv response:')
+  print(response)
+  ss = response.samples()
+                                                              353,5         95%
+  #print("\n qbsolv samples=" + str(list(response.samples())))
+  #print('\nss = ', ss)
+  print(flush=True)
+
+  return ss
+
+
+def partition(Q, k, embedding):
+
+  # Start with Q
+  qsize = Q.shape[1]
+  print('\n Q size = ', qsize)
+
+  # Partition into k parts using DWave
+  ss = runDwave(Q, qsize, k, embedding)
+
+  return ss
+

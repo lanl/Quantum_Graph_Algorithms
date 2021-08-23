@@ -105,7 +105,7 @@ if __name__== '__main__':
   QCD.run_qbsolv()
 
   # Process solution
-  part_number = QCD.process_solution(graph, num_blocks, num_nodes, num_parts)
+  part_number = QCD.process_solution_qbsolv(graph, num_blocks, num_nodes, num_parts)
 
   mmetric = QCD.calcModularityMetric(mtotal, modularity, part_number)
   print ("\nModularity metric = ", mmetric)
