@@ -10,6 +10,7 @@ import random, copy
 import math
 import argparse
 from scipy.sparse import csr_matrix
+import urllib3
 
 import graph_kPartitionAlgorithm_functions as QGP
 import graphFileUtility_functions as GFU
@@ -27,6 +28,8 @@ import graphFileUtility_functions as GFU
 
 if __name__== '__main__':
 
+  urllib3.disable_warnings()
+  
   parser = argparse.ArgumentParser(description='Quantum Graph Partitioning')
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
   parser.add_argument('-pflag', type =int, default=0, help='0 - no plot, 1 - show plot')
@@ -77,7 +80,7 @@ if __name__== '__main__':
   QGP.run_qbsolv()
 
   # Process results
-  bit_string = QGP.process_solution(graph, num_blocks, num_nodes, num_parts)
+  bit_string = QGP.process_solution_qbsolv(graph, num_blocks, num_nodes, num_parts)
 
   # Get results and compare to other tools (if available)
   part_number = QGP.compare_with_metis_and_kahip(graph, bit_string, num_nodes, num_parts, num_blocks)

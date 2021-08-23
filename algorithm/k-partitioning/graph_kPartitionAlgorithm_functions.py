@@ -199,6 +199,35 @@ def violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts):
     print("part %d has %d nodes" %(j, value))
     
 
+def compute_cut_ocean(graph, part_number, num_nodes, num_parts, num_blocks):
+
+  nodes_in_part = [[] for i in range(num_parts)]
+
+  for node in graph.nodes():
+    if node not in part_number:
+      #part_number[node] = num_parts-1
+      print("node %d not assigned a part" %node)
+      #print "assigning part %d to node %d" %(num_parts-1, node)
+
+  for node in part_number:
+    nodes_in_part[part_number[node]].append(node)
+
+  print('\nnode2part ', part_number)
+  print('\n')
+  ip = 0
+  for part in nodes_in_part:
+    print("part ", ip, " size: ", len(part), part)
+    ip = ip + 1
+
+  cut = 0
+  for edge in graph.edges():
+    u, v = edge
+    if part_number[u] != part_number[v]:
+      cut += 1
+
+  return cut
+
+
 def compute_cut(graph, bit_string, num_nodes, num_parts, num_blocks):
   
   nodes_in_part = [[] for i in range(num_parts)]
@@ -234,6 +263,7 @@ def compute_cut(graph, bit_string, num_nodes, num_parts, num_blocks):
     nodes_in_part[part_number[node]].append(node)
  
   print('\nnode2part ', part_number)
+  print('\n')
   ip = 0
   for part in nodes_in_part:
     print("part ", ip, " size: ", len(part), part)
@@ -311,21 +341,54 @@ def set_penalty_constant(num_nodes, num_blocks, beta0, alpha0, gamma0):
  #########
  
 
-def compare_with_metis_and_kahip(graph, bit_string, num_nodes, num_parts, num_blocks):
-  qubo_cut, part_number = compute_cut(graph, bit_string, num_nodes, num_parts, num_blocks)
+def compare_with_metis_and_kahip_ocean(graph, part_number, num_nodes, num_parts, num_blocks):
+
+  qubo_cut = compute_cut_ocean(graph, part_number, num_nodes, num_parts, num_blocks)
+
   write_metis_graph_file(graph)
   #os.system("./gpmetis -ufactor=1 graph.txt "+str(num_parts)+"  > metis_output.out") 
   metis_cut = 0
   #metis_cut = get_metis_edgecut()
   #os.system("./kaffpa graph.txt " + "--k=" +str(num_parts)+"  > kaffpa_output.out")
+
   kaffpa_cut = 0
   #kaffpa_cut = get_kaffpa_edgecut()
+
   fedges = float(nx.number_of_edges(graph))
   print('\nEdge cut results:')
-  print("qbsolv cut: ", qubo_cut, " fraction: ", float(qubo_cut)/ fedges)
-  print("metis cut: ",metis_cut, " fraction: ", float(metis_cut)/fedges)
-  print("kahip:", kaffpa_cut, " fraction: ", float(kaffpa_cut)/fedges)
-  print("difference: ", abs(int(float(metis_cut) - float(qubo_cut))), " fraction: ", abs(float(metis_cut)/fedges - float(qubo_cut)/fedges)) 
+  print("qbsolv cut: ", qubo_cut, " fraction: ", float(qubo_cut)/fedges)
+  if metis_cut > 0:
+    print("metis cut: ",metis_cut, " fraction: ", float(metis_cut)/fedges)
+  if kaffpa_cut > 0:
+    print("kahip:", kaffpa_cut, " fraction: ", float(kaffpa_cut)/fedges)
+  if metis_cut > 0 and qubo_cut > 0:
+    print("difference: ", abs(int(float(metis_cut) - float(qubo_cut))), " fraction: ", abs(float(metis_cut)/fedges - float(qubo_cut)/fedges))
+
+  return qubo_cut
+
+
+def compare_with_metis_and_kahip(graph, bit_string, num_nodes, num_parts, num_blocks):
+
+  qubo_cut, part_number = compute_cut(graph, bit_string, num_nodes, num_parts, num_blocks)
+
+  write_metis_graph_file(graph)
+  #os.system("./gpmetis -ufactor=1 graph.txt "+str(num_parts)+"  > metis_output.out") 
+  metis_cut = 0
+  #metis_cut = get_metis_edgecut()
+
+  #os.system("./kaffpa graph.txt " + "--k=" +str(num_parts)+"  > kaffpa_output.out")
+  kaffpa_cut = 0
+  #kaffpa_cut = get_kaffpa_edgecut()
+
+  fedges = float(nx.number_of_edges(graph))
+  print('\nEdge cut results:')
+  print("qbsolv cut: ", qubo_cut, " fraction: ", float(qubo_cut)/fedges)
+  if metis_cut > 0:
+    print("metis cut: ",metis_cut, " fraction: ", float(metis_cut)/fedges)
+  if kaffpa_cut > 0:
+    print("kahip:", kaffpa_cut, " fraction: ", float(kaffpa_cut)/fedges)
+  if metis_cut > 0 and qubo_cut > 0: 
+    print("difference: ", abs(int(float(metis_cut) - float(qubo_cut))), " fraction: ", abs(float(metis_cut)/fedges - float(qubo_cut)/fedges)) 
  
   return part_number
 
@@ -338,7 +401,7 @@ def run_qbsolv():
   os.system(estring)
 
 
-def process_solution(graph, num_blocks, num_nodes, num_parts):
+def process_solution_qbsolv(graph, num_blocks, num_nodes, num_parts):
 
   bit_string =  get_qubo_solution()
   print('\nResults from D-Wave:',bit_string)
@@ -346,6 +409,33 @@ def process_solution(graph, num_blocks, num_nodes, num_parts):
 
   return bit_string
 
+def process_solution(ss, graph, num_blocks, num_nodes, num_parts):
+
+  qsol = {}
+  for i in range(num_blocks*num_nodes):
+    qsol[i] = int(ss[0,i])
+
+  qtotal = 0
+  for i in range(num_blocks*num_nodes):
+    qtotal += qsol[i]
+  print('\nnum non-zeros = ', qtotal)
+
+  x_indx = {}
+  qubo_soln = qsol
+  for i in range(num_blocks*num_nodes):
+    i_block_indx = get_block_number(i, num_blocks, num_nodes)
+    i_indx_within_block = get_indx_within_block(i, num_nodes)
+    x_indx[(i_indx_within_block, i_block_indx)] = qubo_soln[i]
+
+  violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts)
+
+  part_number = {}
+  for key in x_indx:
+    node, part = key
+    if x_indx[key] == 1:
+      part_number[node] = part
+
+  return part_number
 
 def getEmbedding():
 

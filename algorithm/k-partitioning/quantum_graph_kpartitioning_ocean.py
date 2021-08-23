@@ -16,6 +16,7 @@ import random, copy
 import math
 import argparse
 from scipy.sparse import csr_matrix
+import urllib3
 
 import graph_kPartitionAlgorithm_functions as QGP
 import graphFileUtility_functions as GFU
@@ -32,6 +33,8 @@ import graphFileUtility_functions as GFU
 
 
 if __name__== '__main__':
+
+  urllib3.disable_warnings()
 
   parser = argparse.ArgumentParser(description='Quantum Graph Partitioning')
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
@@ -78,15 +81,20 @@ if __name__== '__main__':
   # Create and write QUBO matrix to file
   laplacian = nx.laplacian_matrix(graph)
   Q = QGP.makeQubo(laplacian, alpha, beta, gamma, GAMMA, graph, num_nodes, num_parts, num_blocks)
+  
+  # Create embedding for D-Wave
+  embedding = QGP.getEmbedding()
 
-  # Run using qbsolv/D-Wave
-  QGP.run_qbsolv()
+  # Run k-partitioning with qbsolv/D-Wave using ocean
+  ss = QGP.partition(Q, num_parts, embedding)
 
-  # Process results
-  bit_string = QGP.process_solution(graph, num_blocks, num_nodes, num_parts)
+  # Process solution
+  part_number = QGP.process_solution(ss, graph, num_blocks, num_nodes, num_parts)
+
+  GFU.write_partfile(graph, part_number, num_nodes, num_parts)
 
   # Get results and compare to other tools (if available)
-  part_number = QGP.compare_with_metis_and_kahip(graph, bit_string, num_nodes, num_parts, num_blocks)
+  QGP.compare_with_metis_and_kahip_ocean(graph, part_number, num_nodes, num_parts, num_blocks)
 
   # Show plot of clusters if requested
   if pflag == 1:
