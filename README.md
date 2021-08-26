@@ -1,6 +1,6 @@
 # Quantum_Graph_Algorithms
 
-This is a collection of quantum graph algorithms that run on the D-Wave quantum annealer. Graph partioning and community detection have been forumated as quadratic unconstrained binary optimization (QUBO)problems that run on the D-Wave.
+This is a collection of quantum graph algorithms that run on the D-Wave quantum annealer. Graph partioning and community detection have been formulated as quadratic unconstrained binary optimization (QUBO)problems that run on the D-Wave.
 
 # Algorithms
 
