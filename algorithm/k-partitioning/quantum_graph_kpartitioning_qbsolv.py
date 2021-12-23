@@ -30,7 +30,7 @@ if __name__== '__main__':
 
   urllib3.disable_warnings()
   
-  parser = argparse.ArgumentParser(description='Quantum Graph Partitioning')
+  parser = argparse.ArgumentParser(description='Quantum Graph Partitioning - qbsolv')
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
   parser.add_argument('-pflag', type =int, default=0, help='0 - no plot, 1 - show plot')
   parser.add_argument('-ifile', help='input filename in mtx format')

@@ -51,8 +51,9 @@ if __name__== '__main__':
   parser.add_argument('-beta', type=int, default=1, help='beta penalty constant: minimize edge cut')
   parser.add_argument('-gamma', type=int, default=-5, help='gamma penalty constant: each node in 1 part')
   parser.add_argument('-threshold', type=float, default=0.00, help='threshold value')
-  parser.add_argument('-label', default='qcd_qbsolv', help='label for run')
-  parser.add_argument('-qsize', type=int, default=64, help='qbsolv sub-qubo size')
+  parser.add_argument('-label', default='qcd_hybrid', help='label for run')
+  parser.add_argument('-qsize', type=int, default=64, help='QPU sub-qubo size')
+
 
   args = parser.parse_args()
 
@@ -107,11 +108,8 @@ if __name__== '__main__':
 
   Q = QCD.makeQubo(graph, modularity, beta, gamma, GAMMA, num_nodes, num_parts, num_blocks, threshold)
 
-  # Create embedding for D-Wave
-  embedding = QCD.getEmbedding(qsize)
-
-  # Run k-clustering with qbsolv/D-Wave using ocean
-  ss = QCD.cluster(Q, num_parts, embedding, qsize, run_label)
+  # Run k-clustering with Hybrid/D-Wave using ocean
+  ss = QCD.clusterHybrid(Q, num_parts, qsize, run_label)
 
   # Process solution
   part_number = QCD.process_solution(ss, graph, num_blocks, num_nodes, num_parts)

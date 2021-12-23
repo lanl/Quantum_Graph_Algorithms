@@ -36,15 +36,15 @@ if __name__== '__main__':
 
   urllib3.disable_warnings()
 
-  parser = argparse.ArgumentParser(description='Quantum Graph Partitioning - ocean/qbsolv')
+  parser = argparse.ArgumentParser(description='Quantum Graph Partitioning - Hybrid')
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
   parser.add_argument('-pflag', type =int, default=0, help='0 - no plot, 1 - show plot')
   parser.add_argument('-ifile', help='input filename in mtx format')
   parser.add_argument('-beta', type=int, default=1, help='beta penalty constant: minimize edge cut')
   parser.add_argument('-alpha', type=int, default=1000, help='alpha penalty constant: balancing')
   parser.add_argument('-gamma', type=int, default=5000, help='gamma penalty constant: each node in 1 part')
-  parser.add_argument('-label', default='qgp_qbsolv', help='label for run')
-  parser.add_argument('-qsize', type=int, default=64, help='qbsolv sub-qubo size')
+  parser.add_argument('-label', default='qgp_hybrid', help='label for run')
+  parser.add_argument('-qsize', type=int, default=64, help='QPU sub-qubo size')
 
   args = parser.parse_args()
  
@@ -88,11 +88,8 @@ if __name__== '__main__':
   laplacian = nx.laplacian_matrix(graph)
   Q = QGP.makeQubo(laplacian, alpha, beta, gamma, GAMMA, graph, num_nodes, num_parts, num_blocks)
   
-  # Create embedding for D-Wave
-  embedding = QGP.getEmbedding()
-
-  # Run k-partitioning with qbsolv/D-Wave using ocean
-  ss = QGP.partition(Q, num_parts, embedding, qsize, run_label)
+  # Run k-partitioning with Hybrid/D-Wave using ocean
+  ss = QGP.partitionHybrid(Q, num_parts, qsize, run_label)
 
   # Process solution
   part_number = QGP.process_solution(ss, graph, num_blocks, num_nodes, num_parts)

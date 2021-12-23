@@ -6,6 +6,8 @@ import re, os, sys
 from dwave_qbsolv import QBSolv
 from dwave.system.samplers import DWaveSampler
 from dwave.system.composites import FixedEmbeddingComposite
+import dimod
+import hybrid
 import minorminer
 
 import numpy as np
@@ -448,15 +450,15 @@ def getEmbedding():
   return embedding
 
 
-def runDwave(Q, num_nodes, k, embedding):
+def runDwave(Q, num_nodes, k, embedding, sub_qsize, run_label):
 
   # Using D-Wave/qbsolv
-  # Needed when greater than 64 nodes/variables
+  # Needed when greater than number of nodes/variables that can fit on the D-Wave
   sampler  = FixedEmbeddingComposite(DWaveSampler(), embedding)
 
-  subqubo_size = 64
   response = QBSolv().sample_qubo(Q, solver=sampler,
-                           solver_limit=subqubo_size)
+                           label=run_label)
+
   print('\n qbsolv response:')
   print(response)
   ss = response.samples()
@@ -466,15 +468,51 @@ def runDwave(Q, num_nodes, k, embedding):
 
   return ss
 
+def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label):
 
-def partition(Q, k, embedding):
+  bqm = dimod.BQM.from_qubo(Q)
+
+  rparams = {}
+  rparams['label'] = run_label
+
+  # define the workflow
+  iteration = hybrid.Race(
+    hybrid.InterruptableTabuSampler(),
+    hybrid.EnergyImpactDecomposer(size=sub_qsize, rolling=True, rolling_history=0.15)
+    | hybrid.QPUSubproblemAutoEmbeddingSampler(num_reads=100, sampling_params=rparams)
+    | hybrid.SplatComposer()
+  ) | hybrid.MergeSamples(aggregate=True)
+  workflow = hybrid.LoopUntilNoImprovement(iteration, convergence=3)
+
+  # run the workflow
+  init_state = hybrid.State.from_problem(bqm)
+  solution = workflow.run(init_state).result()
+
+  print(solution.samples)
+  ss = np.zeros([1,num_nodes])
+  for i in range(num_nodes):
+    ss[0,i] = solution.samples.first.sample[i]
+
+  return ss
+
+def partition(Q, k, embedding, sub_qsize, run_label):
 
   # Start with Q
   qsize = Q.shape[1]
   print('\n Q size = ', qsize)
 
-  # Partition into k parts using DWave
-  ss = runDwave(Q, qsize, k, embedding)
+  # Partition into k parts using DWave ocean/qbsolv
+  ss = runDwave(Q, qsize, k, embedding, sub_qsize, run_label)
 
   return ss
 
+def partitionHybrid(Q, k, sub_qsize, run_label):
+
+  # Start with Q
+  qsize = Q.shape[1]
+  print('\n Q size = ', qsize)
+
+  # Partition into k parts using Hybrid/DWave oceae
+  ss = runDwaveHybrid(Q, qsize, k, sub_qsize, run_label)
+
+  return ss
