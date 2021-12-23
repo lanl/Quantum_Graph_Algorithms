@@ -43,14 +43,15 @@ if __name__== '__main__':
 
   urllib3.disable_warnings()
 
-  parser = argparse.ArgumentParser(description='Quantum Community Detection 2-clustering - qbsolv/D-Wave')
+  parser = argparse.ArgumentParser(description='Quantum Community Detection 2-clustering - hybrid workflow')
   parser.add_argument('-ifile', help='input filename')
   parser.add_argument('-ftype', default='mtx', help='input file type (mtx, umtx, mi')
   parser.add_argument('-pflag', type=int, default=0, help='plot flag, 0-no 1-yes')
-  parser.add_argument('-usedwave', type=int, default=0, help='use dwave flag, 0-no 1-yes using Embedding, 2-yes using FixedEmbedding, 3-yes using comdline qbsolv')
+  parser.add_argument('-usedwave', type=int, default=0, help='use dwave flag, 0-no 1-yes using Embedding, 2-yes using FixedEmbedding, 3-yes using comdline qbsolve')
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
-  parser.add_argument('-label', default='q2c_qbsolv', help='label for run')
+  parser.add_argument('-label', default='q2c_hybrid', help='label for run')
   parser.add_argument('-qsize', type=int, default=64, help='qbsolv sub-qubo size')
+
 
   args = parser.parse_args()
 
@@ -71,10 +72,6 @@ if __name__== '__main__':
   qsize = args.qsize
  
   threshold = 0.0
-
-  # Create one embedding if using D-Wave
-  if use_dwave > 0:
-    embedding = QCD.getEmbedding()
 
   # Read in file as graph
   graph = nx.Graph()
@@ -106,7 +103,7 @@ if __name__== '__main__':
   # Cluster into 2 parts
   if use_dwave > 0:
     print('\nusing dwave')
-    cdet = QCD.cluster(B, use_dwave, embedding, qsize, run_label)
+    cdet = QCD.clusterHybrid(B, use_dwave, qsize, run_label)
     #print('\ncdet = ', cdet)
   else:
     print('\n not using dwave - done')  

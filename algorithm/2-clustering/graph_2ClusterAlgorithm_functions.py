@@ -6,6 +6,8 @@ from dwave_qbsolv import QBSolv
 from dwave.system.samplers import DWaveSampler
 from dwave.system.composites import EmbeddingComposite, FixedEmbeddingComposite
 from dimod.reference.samplers import ExactSolver
+import dimod
+import hybrid
 import minorminer
 
 from scipy.io import mmread
@@ -198,19 +200,20 @@ def getEmbedding():
   return embedding
 
 
-def runDwave(Q, num_nodes, use_dwave, embedding):
+def runDwave(Q, num_nodes, use_dwave, embedding, qsize, run_label):
 
   if use_dwave == 1 or use_dwave == 2:
     # Using D-Wave/qbsolv
-    # Needed when greater than 64 nodes/variables
+    # Needed when greater than the number of nodes/variables that fit on D-Wave
     if use_dwave == 1:
       sampler = EmbeddingComposite(DWaveSampler())
     else:
       sampler  = FixedEmbeddingComposite(DWaveSampler(), embedding)
 
-    subqubo_size = 64
+    subqubo_size = qsize
     response = QBSolv().sample_qubo(Q, solver=sampler,
-                             solver_limit=subqubo_size)
+                                       label=run_label)
+
     print('\n qbsolv response:')
     print(response)
     ss = response.samples()
@@ -271,6 +274,64 @@ def runDwave(Q, num_nodes, use_dwave, embedding):
   return cldet
 
 
+def runDwaveHybrid(Q, num_nodes, use_dwave, sub_qsize, run_label):
+
+  if use_dwave == 3:
+    print('\nThe hybrid version of 2-clustering does not work with option 3')
+    exit(1)
+
+  bqm = dimod.BQM.from_qubo(Q)
+
+  rparams = {}
+  rparams['label'] = run_label
+
+  # define the workflow
+  iteration = hybrid.Race(
+    hybrid.InterruptableTabuSampler(),
+    hybrid.EnergyImpactDecomposer(size=sub_qsize, rolling=True, rolling_history=0.15)
+    | hybrid.QPUSubproblemAutoEmbeddingSampler(num_reads=100, sampling_params=rparams)
+    | hybrid.SplatComposer()
+  ) | hybrid.MergeSamples(aggregate=True)
+  workflow = hybrid.LoopUntilNoImprovement(iteration, convergence=3)
+
+  # run the workflow
+  init_state = hybrid.State.from_problem(bqm)
+  solution = workflow.run(init_state).result()
+
+  print(solution.samples)
+  ss = np.zeros([1,num_nodes])
+  for i in range(num_nodes):
+    ss[0,i] = solution.samples.first.sample[i]
+
+  # Determine sizes of 2 clusters
+  cc = np.zeros([num_nodes])
+  c0 = 0
+  c1 = 0
+  for i in range(num_nodes):
+    if ss[0,i] == 0:
+      c0 = c0 + 1
+    else:
+      c1 = c1 + 1
+      cc[i] = 1
+
+  print('\ndwave  2 clusters of size:', c0, c1)
+  print('\ncc = ', cc)
+
+  cldet = [[] for i in range(2)]
+  cdet = np.zeros([num_nodes])
+  for i in range(num_nodes):
+    cdet[i] = i
+
+  cldet[0] = cdet[cc == 0]
+  cldet[1] = cdet[cc == 1]
+  print('\ndwave  2 clusters of size:', c0, c1)
+  for i in range(2):
+    print('cldet ', i, cldet[i])
+  print(flush=True)
+
+  return cldet
+
+
 def makeAdj(H):
 
   hsize = H.shape[1]
@@ -302,7 +363,7 @@ def lowEnergy(cldet, H):
   return clind
 
 
-def cluster(B, use_dwave, embedding):
+def cluster(B, use_dwave, embedding, qsize, run_label):
 
   # Start with B
   bsize = B.shape[1]
@@ -312,7 +373,25 @@ def cluster(B, use_dwave, embedding):
   Q = makeQubo(B)
 
   # Cluster into 2 parts using DWave
-  cldet = runDwave(Q, bsize, use_dwave, embedding)
+  cldet = runDwave(Q, bsize, use_dwave, embedding, qsize, run_label)
+
+  # Determine which of the 2 clusters has the lower energy
+  #clind = lowEnergy(cldet, H)
+
+  return cldet
+
+
+def clusterHybrid(B, use_dwave, qsize, run_label):
+
+  # Start with B
+  bsize = B.shape[1]
+  print('\n B size = ', bsize)
+
+  # Create the qubo from the modularity matrix
+  Q = makeQubo(B)
+
+  # Cluster into 2 parts using DWave
+  cldet = runDwaveHybrid(Q, bsize, use_dwave, qsize, run_label)
 
   # Determine which of the 2 clusters has the lower energy
   #clind = lowEnergy(cldet, H)
