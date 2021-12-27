@@ -426,6 +426,18 @@ def generateGraph(ftype, ifilename, threshold):
   return graph
 
 
+def write_resultFile(result):
+
+    print('\nResult info:\n', result)
+
+    resultFile = open("result.txt", "w")
+
+    result_string=str(result)+'\n'
+    resultFile.write(result_string)
+
+    resultFile.close()
+
+
 def showClusters(part_number, graph):
 
     #drawing

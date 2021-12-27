@@ -95,9 +95,20 @@ if __name__== '__main__':
   print ("\n\t Quantum Community Detection: up to %d communities...\n" %num_parts)
   print ("Graph has %d nodes and %d edges" %(num_nodes, num_edges))
 
+  # Collect results to dictionary
+  result = {}
+  result['alg'] = 'LANL_QCD'
+  result['num_clusters'] = num_parts 
+  result['name'] = ifilename
+  result['nodes'] = num_nodes
+  result['edges'] = num_edges
+  result['size'] = num_nodes * num_parts 
+  result['run_arch'] = 'DWAVE_Hybrid'
+  result['subqubo_size'] = qsize
+
   beta, gamma, GAMMA  = QCD.set_penalty_constant(num_nodes, num_blocks, beta0, gamma0)
 
-  mtotal,modularity = QCD.build_mod(A, threshold, num_edges)
+  mtotal, modularity = QCD.build_mod(A, threshold, num_edges)
 
   print ("\nModularity matrix: \n", modularity)
   
@@ -109,15 +120,18 @@ if __name__== '__main__':
   Q = QCD.makeQubo(graph, modularity, beta, gamma, GAMMA, num_nodes, num_parts, num_blocks, threshold)
 
   # Run k-clustering with Hybrid/D-Wave using ocean
-  ss = QCD.clusterHybrid(Q, num_parts, qsize, run_label)
+  ss = QCD.clusterHybrid(Q, num_parts, qsize, run_label, result)
 
   # Process solution
   part_number = QCD.process_solution(ss, graph, num_blocks, num_nodes, num_parts)
 
   mmetric = QCD.calcModularityMetric(mtotal, modularity, part_number)
   print ("\nModularity metric = ", mmetric)
+  result['modularity_metric'] = mmetric
 
   GFU.write_partFile(part_number, num_nodes, num_parts) 
+
+  GFU.write_resultFile(result)
 
   if pflag == 1:
     GFU.showClusters(part_number, graph)
