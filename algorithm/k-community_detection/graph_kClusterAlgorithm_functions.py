@@ -391,7 +391,7 @@ def runDwave(Q, num_nodes, k, embedding, qsize, run_label, result):
   ndiff = 0
   total_solns = 0
   for sample, energy, num_occurrences in solution.data():
-    print(sample, "Energy: ", energy, "Occurrences: ", num_occurrences)
+    #print(sample, "Energy: ", energy, "Occurrences: ", num_occurrences)
     if first == True:
       result['energy'] = energy
       result['num_occ'] = num_occurrences

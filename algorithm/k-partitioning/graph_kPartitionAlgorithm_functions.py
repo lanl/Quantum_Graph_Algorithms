@@ -18,6 +18,7 @@ import random, copy
 import math
 import argparse
 from scipy.sparse import csr_matrix
+import datetime as dt
 
 import graphFileUtility_functions as GFU
 
@@ -450,25 +451,43 @@ def getEmbedding():
   return embedding
 
 
-def runDwave(Q, num_nodes, k, embedding, sub_qsize, run_label):
+def runDwave(Q, num_nodes, k, embedding, sub_qsize, run_label, result):
 
   # Using D-Wave/qbsolv
   # Needed when greater than number of nodes/variables that can fit on the D-Wave
   sampler  = FixedEmbeddingComposite(DWaveSampler(), embedding)
 
-  response = QBSolv().sample_qubo(Q, solver=sampler,
+  t0 = dt.datetime.now()
+  solution = QBSolv().sample_qubo(Q, solver=sampler,
                            label=run_label)
+  wtime = dt.datetime.now() - t0
+  result['wall_clock_time'] = wtime
+
+  # Collect first energy and num_occ, num diff solutions, and total solutions
+  first = True
+  ndiff = 0
+  total_solns = 0
+  for sample, energy, num_occurrences in solution.data():
+    #print(sample, "Energy: ", energy, "Occurrences: ", num_occurrences)
+    if first == True:
+      result['energy'] = energy
+      result['num_occ'] = num_occurrences
+      first = False
+    ndiff += 1
+    total_solns += num_occurrences
+  result['num_diff_solns'] = ndiff
+  result['total_solns'] = total_solns
 
   print('\n qbsolv response:')
-  print(response)
-  ss = response.samples()
-  #print("\n qbsolv samples=" + str(list(response.samples())))
+  print(solution)
+  ss = solution.samples()
+  #print("\n qbsolv samples=" + str(list(solution.samples())))
   #print('\nss = ', ss)
   print(flush=True)
 
   return ss
 
-def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label):
+def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label, result):
 
   bqm = dimod.BQM.from_qubo(Q)
 
@@ -486,7 +505,23 @@ def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label):
 
   # run the workflow
   init_state = hybrid.State.from_problem(bqm)
+  t0 = dt.datetime.now()
   solution = workflow.run(init_state).result()
+  wtime = dt.datetime.now() - t0
+
+  result['wall_clock_time'] = wtime
+
+  # Collect from lowest energy result
+  result['energy'] = solution.samples.first.energy
+  result['num_occ'] = solution.samples.first.num_occurrences
+
+  # Collect number of different solutions w different energies
+  result['num_diff_solns'] = len(solution.samples)
+
+  total_solns = 0
+  for energy, num_occ in solution.samples.data(['energy', 'num_occurrences']):
+    total_solns += num_occ
+  result['total_solns'] = total_solns
 
   print(solution.samples)
   ss = np.zeros([1,num_nodes])
@@ -495,24 +530,24 @@ def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label):
 
   return ss
 
-def partition(Q, k, embedding, sub_qsize, run_label):
+def partition(Q, k, embedding, sub_qsize, run_label, result):
 
   # Start with Q
   qsize = Q.shape[1]
   print('\n Q size = ', qsize)
 
   # Partition into k parts using DWave ocean/qbsolv
-  ss = runDwave(Q, qsize, k, embedding, sub_qsize, run_label)
+  ss = runDwave(Q, qsize, k, embedding, sub_qsize, run_label, result)
 
   return ss
 
-def partitionHybrid(Q, k, sub_qsize, run_label):
+def partitionHybrid(Q, k, sub_qsize, run_label, result):
 
   # Start with Q
   qsize = Q.shape[1]
   print('\n Q size = ', qsize)
 
   # Partition into k parts using Hybrid/DWave oceae
-  ss = runDwaveHybrid(Q, qsize, k, sub_qsize, run_label)
+  ss = runDwaveHybrid(Q, qsize, k, sub_qsize, run_label, result)
 
   return ss

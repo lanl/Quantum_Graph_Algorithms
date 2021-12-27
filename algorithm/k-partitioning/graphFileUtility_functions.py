@@ -194,6 +194,18 @@ def write_metis_graph_file(graph):
     gfile.close()
 
 
+def write_resultFile(result):
+
+    print('\nResult info:\n', result)
+
+    resultFile = open("result.txt", "w")
+
+    result_string=str(result)+'\n'
+    resultFile.write(result_string)
+
+    resultFile.close()
+
+
 def show_partitions(graph, part_number):
 
   color = {0:'red', 1:'blue', 2:'green', 3:'black', 4:'yellow', 5:'orange', 6:'violet', 7:'pink', 8:'grey', 9:'turquoise', 10:'teal', 11:'purple', 12:'cyan', 13:'magenta', 14:'brown'}
