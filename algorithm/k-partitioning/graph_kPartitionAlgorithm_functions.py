@@ -457,8 +457,9 @@ def runDwave(Q, num_nodes, k, embedding, sub_qsize, run_label, result):
   # Needed when greater than number of nodes/variables that can fit on the D-Wave
   sampler  = FixedEmbeddingComposite(DWaveSampler(), embedding)
 
+  rval = random.randint(1,10000)
   t0 = dt.datetime.now()
-  solution = QBSolv().sample_qubo(Q, solver=sampler,
+  solution = QBSolv().sample_qubo(Q, solver=sampler, seed=rval,
                            label=run_label)
   wtime = dt.datetime.now() - t0
   result['wall_clock_time'] = wtime

@@ -380,8 +380,9 @@ def runDwave(Q, num_nodes, k, embedding, qsize, run_label, result):
   sampler  = FixedEmbeddingComposite(DWaveSampler(), embedding)
   #sampler  = DWaveCliqueSampler()
 
+  rval = random.randint(1,10000)
   t0 = dt.datetime.now()
-  solution = QBSolv().sample_qubo(Q, solver=sampler,
+  solution = QBSolv().sample_qubo(Q, solver=sampler, seed=rval,
                            label=run_label)
   wtime = dt.datetime.now() - t0
   result['wall_clock_time'] = wtime
