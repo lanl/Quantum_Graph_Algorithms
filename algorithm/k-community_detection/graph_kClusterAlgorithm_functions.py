@@ -22,6 +22,7 @@ import argparse
 import logging
 import datetime as dt
 
+from qpu_sampler_time import QPUTimeSubproblemAutoEmbeddingSampler
 
 #
 # The Quantum Graph Community Detection Algorithm has been described
@@ -418,11 +419,16 @@ def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label, result):
   rparams = {}
   rparams['label'] = run_label
 
+  # QPU sampler with timing
+  QPUSubSamTime = QPUTimeSubproblemAutoEmbeddingSampler(num_reads=100, sampling_params=rparams)
+
   # define the workflow
   iteration = hybrid.Race(
     hybrid.InterruptableTabuSampler(),
     hybrid.EnergyImpactDecomposer(size=sub_qsize, rolling=True, rolling_history=0.15)
-    | hybrid.QPUSubproblemAutoEmbeddingSampler(num_reads=100, sampling_params=rparams)
+    #| hybrid.QPUSubproblemAutoEmbeddingSampler(num_reads=100, sampling_params=rparams)
+    #| QTS.QPUTimeSubproblemAutoEmbeddingSampler(num_reads=100, sampling_params=rparams)
+    | QPUSubSamTime
     | hybrid.SplatComposer()
   ) | hybrid.MergeSamples(aggregate=True)
   workflow = hybrid.LoopUntilNoImprovement(iteration, convergence=3)
@@ -434,6 +440,10 @@ def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label, result):
   wtime = dt.datetime.now() - t0
 
   result['wall_clock_time'] = wtime
+
+  # Collect number of QPU accesses and QPU time used
+  result['num_qpu_accesses'] = QPUSubSamTime.num_accesses
+  result['total_qpu_time'] = QPUSubSamTime.total_qpu_time
 
   # Collect from lowest energy result
   result['energy'] = solution.samples.first.energy
