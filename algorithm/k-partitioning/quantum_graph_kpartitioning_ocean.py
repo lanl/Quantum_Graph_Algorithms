@@ -107,12 +107,12 @@ if __name__== '__main__':
   ss = QGP.partition(Q, num_parts, embedding, qsize, run_label, result)
 
   # Process solution
-  part_number = QGP.process_solution(ss, graph, num_blocks, num_nodes, num_parts)
+  part_number = QGP.process_solution(ss, graph, num_blocks, num_nodes, num_parts, result)
 
   GFU.write_partfile(graph, part_number, num_nodes, num_parts)
 
   # Get results and compare to other tools (if available)
-  min_cut = QGP.compare_with_metis_and_kahip_ocean(graph, part_number, num_nodes, num_parts, num_blocks)
+  min_cut = QGP.compare_with_metis_and_kahip_ocean(graph, part_number, num_nodes, num_parts, num_blocks, result)
   result['min_cut_metric'] = min_cut
 
   GFU.write_resultFile(result)

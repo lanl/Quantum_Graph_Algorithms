@@ -175,7 +175,7 @@ def get_qubo_solution():
   return bit_string.strip() 
         
        
-def violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts):
+def violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts, result):
   #each node in exactly one part
   
   for node in range(num_nodes):
@@ -196,11 +196,15 @@ def violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts):
     sum_v_i += node_i
 
   print("\nlast part size",sum_v_i , - num_nodes/float(num_parts))
+  num_parts_found = 0
   for j in range(num_blocks):
     value = 0
     for node in range(num_nodes):
       value += x_indx[(node, j)]
     print("part %d has %d nodes" %(j, value))
+    if value > 0:
+      num_parts_found += 1
+  result['num_parts_found'] = num_parts_found
     
 
 def compute_cut_ocean(graph, part_number, num_nodes, num_parts, num_blocks):
@@ -232,7 +236,7 @@ def compute_cut_ocean(graph, part_number, num_nodes, num_parts, num_blocks):
   return cut
 
 
-def compute_cut(graph, bit_string, num_nodes, num_parts, num_blocks):
+def compute_cut(graph, bit_string, num_nodes, num_parts, num_blocks, result):
   
   nodes_in_part = [[] for i in range(num_parts)]
   x_indx = {}
@@ -243,7 +247,7 @@ def compute_cut(graph, bit_string, num_nodes, num_parts, num_blocks):
       i_indx_within_block = get_indx_within_block(i, num_nodes)
       x_indx[(i_indx_within_block, i_block_indx)] = qubo_soln[i]
 
-  violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts)
+  violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts, result)
 
   part_number = {}
   for key in x_indx:
@@ -345,7 +349,7 @@ def set_penalty_constant(num_nodes, num_blocks, beta0, alpha0, gamma0):
  #########
  
 
-def compare_with_metis_and_kahip_ocean(graph, part_number, num_nodes, num_parts, num_blocks):
+def compare_with_metis_and_kahip_ocean(graph, part_number, num_nodes, num_parts, num_blocks, result):
 
   qubo_cut = compute_cut_ocean(graph, part_number, num_nodes, num_parts, num_blocks)
 
@@ -373,7 +377,7 @@ def compare_with_metis_and_kahip_ocean(graph, part_number, num_nodes, num_parts,
 
 def compare_with_metis_and_kahip(graph, bit_string, num_nodes, num_parts, num_blocks):
 
-  qubo_cut, part_number = compute_cut(graph, bit_string, num_nodes, num_parts, num_blocks)
+  qubo_cut, part_number = compute_cut(graph, bit_string, num_nodes, num_parts, num_blocks, result)
 
   write_metis_graph_file(graph)
   #os.system("./gpmetis -ufactor=1 graph.txt "+str(num_parts)+"  > metis_output.out") 
@@ -413,7 +417,7 @@ def process_solution_qbsolv(graph, num_blocks, num_nodes, num_parts):
 
   return bit_string
 
-def process_solution(ss, graph, num_blocks, num_nodes, num_parts):
+def process_solution(ss, graph, num_blocks, num_nodes, num_parts, result):
 
   qsol = {}
   for i in range(num_blocks*num_nodes):
@@ -431,7 +435,7 @@ def process_solution(ss, graph, num_blocks, num_nodes, num_parts):
     i_indx_within_block = get_indx_within_block(i, num_nodes)
     x_indx[(i_indx_within_block, i_block_indx)] = qubo_soln[i]
 
-  violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts)
+  violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts, result)
 
   part_number = {}
   for key in x_indx:
