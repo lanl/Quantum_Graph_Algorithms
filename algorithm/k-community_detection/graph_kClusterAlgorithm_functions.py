@@ -240,7 +240,7 @@ def get_qubo_solution():
   return bit_string.strip() 
         
        
-def violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts):
+def violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts, result):
 
   #each node in exactly one part
   
@@ -263,11 +263,15 @@ def violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts):
     sum_v_i += node_i
 
   print ("\nlast part size",sum_v_i , - num_nodes/float(num_parts))
+  num_clusters_found = 0
   for j in range(num_blocks):
     value = 0
     for node in range(num_nodes):
       value += x_indx[(node, j)]
     print ("part %d has %d nodes" %(j, value))
+    if value > 0:
+      num_clusters_found += 1
+  result['num_clusters_found'] = num_clusters_found
     
 
 #######################################################
@@ -304,7 +308,7 @@ def run_qbsolv():
   os.system(estring)
 
 
-def process_solution_qbsolv(graph, num_blocks, num_nodes, num_parts):
+def process_solution_qbsolv(graph, num_blocks, num_nodes, num_parts, result):
 
   bit_string =  get_qubo_solution()
   print (bit_string)
@@ -317,7 +321,7 @@ def process_solution_qbsolv(graph, num_blocks, num_nodes, num_parts):
     i_indx_within_block = get_indx_within_block(i, num_nodes)
     x_indx[(i_indx_within_block, i_block_indx)] = qubo_soln[i]
 
-  violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts)
+  violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts, result)
 
   part_number = {}
   for key in x_indx:
@@ -328,7 +332,7 @@ def process_solution_qbsolv(graph, num_blocks, num_nodes, num_parts):
   return part_number
 
 
-def process_solution(ss, graph, num_blocks, num_nodes, num_parts):
+def process_solution(ss, graph, num_blocks, num_nodes, num_parts, result):
 
   qsol = {}
   for i in range(num_blocks*num_nodes):
@@ -346,7 +350,7 @@ def process_solution(ss, graph, num_blocks, num_nodes, num_parts):
     i_indx_within_block = get_indx_within_block(i, num_nodes)
     x_indx[(i_indx_within_block, i_block_indx)] = qubo_soln[i]
 
-  violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts)
+  violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts, result)
 
   part_number = {}
   for key in x_indx:
@@ -438,6 +442,9 @@ def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label, result):
   t0 = dt.datetime.now()
   solution = workflow.run(init_state).result()
   wtime = dt.datetime.now() - t0
+  #hybrid.profiling.print_counters(workflow)
+  #print('\nQ timers = ', QPUSubSamTime.timers)
+  #print('\nQ counters = ', QPUSubSamTime.counters)
 
   result['wall_clock_time'] = wtime
 

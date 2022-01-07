@@ -125,7 +125,7 @@ if __name__== '__main__':
   ss = QCD.cluster(Q, num_parts, embedding, qsize, run_label, result)
 
   # Process solution
-  part_number = QCD.process_solution(ss, graph, num_blocks, num_nodes, num_parts)
+  part_number = QCD.process_solution(ss, graph, num_blocks, num_nodes, num_parts, result)
 
   mmetric = QCD.calcModularityMetric(mtotal, modularity, part_number)
   print ("\nModularity metric = ", mmetric)

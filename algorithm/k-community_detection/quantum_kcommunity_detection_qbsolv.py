@@ -71,6 +71,8 @@ if __name__== '__main__':
   gamma0 = args.gamma
   threshold = args.threshold
 
+  result = {}
+
   ####
   # NOTE: node and matrix indexing starts from 0
   #
