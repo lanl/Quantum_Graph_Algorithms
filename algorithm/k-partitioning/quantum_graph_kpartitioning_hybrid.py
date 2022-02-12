@@ -84,13 +84,13 @@ if __name__== '__main__':
 
   # Collect results to dictionary
   result = {}
-  result['alg'] = 'LANL_QGP'
+  result['alg'] = 'LANL_GP'
   result['num_parts'] = num_parts
-  result['name'] = ifilename
+  result['dataset'] = ifilename
   result['nodes'] = num_nodes
   result['edges'] = num_edges
   result['size'] = num_nodes * num_parts
-  result['run_arch'] = 'DWAVE_Hybrid'
+  result['solver'] = 'DWAVE_Hybrid'
   result['subqubo_size'] = qsize
 
   # Set penalty constants

@@ -96,13 +96,13 @@ if __name__== '__main__':
 
   # Collect results to dictionary
   result = {}
-  result['alg'] = 'LANL_QCD'
+  result['alg'] = 'LANL_CD'
   result['num_clusters'] = num_parts
-  result['name'] = ifilename
+  result['dataset'] = ifilename
   result['nodes'] = num_nodes
   result['edges'] = num_edges
   result['size'] = num_nodes * num_parts
-  result['run_arch'] = 'DWAVE_Ocean_Qbsolv'
+  result['solver'] = 'DWAVE_Ocean_Qbsolv'
   result['subqubo_size'] = qsize
 
   beta, gamma, GAMMA  = QCD.set_penalty_constant(num_nodes, num_blocks, beta0, gamma0)
