@@ -3,7 +3,7 @@ import numpy.linalg as la
 import networkx as nx
 
 from dwave_qbsolv import QBSolv
-from dwave.system.samplers import DWaveSampler
+from dwave.system.samplers import DWaveSampler, DWaveCliqueSampler
 from dwave.system.composites import EmbeddingComposite, FixedEmbeddingComposite
 from dimod.reference.samplers import ExactSolver
 import minorminer
@@ -43,15 +43,14 @@ if __name__== '__main__':
 
   urllib3.disable_warnings()
 
-  parser = argparse.ArgumentParser(description='Quantum Community Detection 2-clustering - hybrid workflow')
+  parser = argparse.ArgumentParser(description='Quantum Community Detection 2-clustering - D-Wave')
   parser.add_argument('-ifile', help='input filename')
   parser.add_argument('-ftype', default='mtx', help='input file type (mtx, umtx, nmtx, mi)')
   parser.add_argument('-pflag', type=int, default=0, help='plot flag, 0-no 1-yes')
-  parser.add_argument('-usedwave', type=int, default=0, help='use dwave flag, 0-no 1-yes using Embedding, 2-yes using FixedEmbedding, 3-yes using comdline qbsolv')
+  parser.add_argument('-usedwave', type=int, default=4, help='use dwave flag, 0-no 1-yes using Embedding, 2-yes using FixedEmbedding, 3-yes using comdline qbsolv, 4-yes using direct (Clique)')
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
-  parser.add_argument('-label', default='q2c_hybrid', help='label for run')
+  parser.add_argument('-label', default='q2c_qbsolv', help='label for run')
   parser.add_argument('-qsize', type=int, default=64, help='qbsolv sub-qubo size')
-
 
   args = parser.parse_args()
 
@@ -73,9 +72,14 @@ if __name__== '__main__':
  
   threshold = 0.0
 
-  # Read in file as graph
-  graph = GFU.createGraph(ftype, ifile, threshold) 
-  
+  # Create one embedding if using D-Wave
+  if use_dwave > 0:
+    #embedding = QCD.getEmbedding()
+    embedding = []
+
+  # Read in graph based n type
+  graph = GFU.createGraph(ftype, ifile, threshold)
+
   num_nodes = nx.number_of_nodes(graph)
   num_edges = nx.number_of_edges(graph)
   print ("\n\t community detection: up to %d communities...\n" %nparts)
@@ -92,7 +96,7 @@ if __name__== '__main__':
   # Cluster into 2 parts
   if use_dwave > 0:
     print('\nusing dwave')
-    part_number,cdet = QCD.clusterHybrid(B, use_dwave, qsize, run_label)
+    part_number, cdet = QCD.cluster(B, use_dwave, embedding, qsize, run_label)
     #print('\ncdet = ', cdet)
   else:
     print('\n not using dwave - done')  

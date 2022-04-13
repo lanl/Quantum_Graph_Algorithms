@@ -144,3 +144,52 @@ def read_mi_file(G, mfile, threshold):
 
   return G
 
+
+def read_graph_file_noweights(G, prot_file):
+
+  gfile = open(prot_file, "r")
+  line = gfile.readline()
+  line = gfile.readline()
+  x = line.split()
+  n = x[0]
+  nedges = int(x[2])
+  print("graph ", n, " nodes ", nedges, " elements")
+
+  for i in range(0, nedges):
+    line = gfile.readline()
+    x = line.split()
+    n0 = int(x[0]) - 1
+    n1 = int(x[1]) - 1
+    if n0 != n1:
+      G.add_edge(n0,n1)
+    else:
+      G.add_node(n0)
+
+  gfile.close()
+
+  print("graph size =", G.size())
+
+  return G
+
+
+def createGraph(ftype, ifile, threshold):
+
+  # Read in file as graph
+  graph = nx.Graph()
+  # Weighted mtx
+  if ftype == 'mtx':
+    graph = read_graph_file(graph, ifile, threshold)
+
+  # Unweighted mtx
+  elif ftype =='umtx':
+    graph = read_graph_file_unweighted(graph, ifile)
+
+  # No weights
+  elif ftype == 'nmtx':
+     graph = read_graph_file_noweights(graph, ifile)
+
+  # mutual information
+  elif ftype == 'mi':
+    graph = read_mi_file(graph, ifile, threshold)
+
+  return graph

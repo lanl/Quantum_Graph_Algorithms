@@ -45,9 +45,9 @@ if __name__== '__main__':
 
   parser = argparse.ArgumentParser(description='Quantum Community Detection 2-clustering - qbsolv/D-Wave')
   parser.add_argument('-ifile', help='input filename')
-  parser.add_argument('-ftype', default='mtx', help='input file type (mtx, umtx, mi')
+  parser.add_argument('-ftype', default='mtx', help='input file type (mtx, umtx, nmtx, mi)')
   parser.add_argument('-pflag', type=int, default=0, help='plot flag, 0-no 1-yes')
-  parser.add_argument('-usedwave', type=int, default=0, help='use dwave flag, 0-no 1-yes using Embedding, 2-yes using FixedEmbedding, 3-yes using comdline qbsolv')
+  parser.add_argument('-usedwave', type=int, default=2, help='use dwave flag, 0-no 1-yes using Embedding, 2-yes using FixedEmbedding, 3-yes using comdline qbsolv')
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
   parser.add_argument('-label', default='q2c_qbsolv', help='label for run')
   parser.add_argument('-qsize', type=int, default=64, help='qbsolv sub-qubo size')
@@ -77,18 +77,7 @@ if __name__== '__main__':
     embedding = QCD.getEmbedding()
 
   # Read in file as graph
-  graph = nx.Graph()
-  # Weighted mtx
-  if ftype == 'mtx':
-    graph = GFU.read_graph_file(graph, ifile, threshold)
-  # Unweighted mtx
-  else:
-    if ftype =='umtx':
-      graph = GFU.read_graph_file_unweighted(graph, ifile)
-    # mutual information
-    else:
-      if ftype == 'mi':
-        graph = GFU.read_mi_file(graph, ifile, threshold)
+  graph = GFU.createGraph(ftype, ifile, threshold)
 
   num_nodes = nx.number_of_nodes(graph)
   num_edges = nx.number_of_edges(graph)
@@ -106,9 +95,13 @@ if __name__== '__main__':
   # Cluster into 2 parts
   if use_dwave > 0:
     print('\nusing dwave')
-    cdet = QCD.cluster(B, use_dwave, embedding, qsize, run_label)
+    part_number,cdet = QCD.cluster(B, use_dwave, embedding, qsize, run_label)
     #print('\ncdet = ', cdet)
   else:
     print('\n not using dwave - done')  
+
+  # Calculate modularity meetric
+  mmetric = QCD.calcModularityMetric(mtotal, B, part_number)
+  print('\nmodularity metric = ', mmetric)
 
   exit(0)

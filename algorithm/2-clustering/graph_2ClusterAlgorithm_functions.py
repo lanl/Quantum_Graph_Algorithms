@@ -3,12 +3,14 @@ import numpy.linalg as la
 import networkx as nx
 
 from dwave_qbsolv import QBSolv
-from dwave.system.samplers import DWaveSampler
+from dwave.system.samplers import DWaveSampler, DWaveCliqueSampler
 from dwave.system.composites import EmbeddingComposite, FixedEmbeddingComposite
 from dimod.reference.samplers import ExactSolver
 import dimod
 import hybrid
 import minorminer
+from functools import partial
+from dwave.embedding.chain_strength import uniform_torque_compensation
 
 from scipy.io import mmread
 import matplotlib.pyplot as plt
@@ -17,7 +19,7 @@ import logging
 import os
 import sys
 import random
-
+import datetime as dt
 
 #
 # The Quantum Graph Community Detection Algorithm has been described
@@ -55,32 +57,33 @@ def buildMod(Adj, thresh):
         M = 0.0
 
         #print ("\n Adj degrees: ")
-        for ii in range(0,Dim):
-          for jj in range(0,Dim):
-            if(ii != jj):
+        for ii in range(Dim):
+          for jj in range(Dim):
+            if ii != jj:
               Deg[ii] = Deg[ii] + Adj[ii, jj]
+
           M = M + Deg[ii]
-              #M = M + 1
+
           #print ii,Deg[ii]
           mtotal = M/2.0
 
         #print ("\n Number of edges:", M)
 
-        Mod = np.zeros((Dim,Dim))
+        Mod = np.zeros([Dim,Dim])
 
         # Calc modularity matrix
-        for ii in range(0,Dim):
-          for jj in range(0,Dim):
+        for ii in range(Dim):
+          for jj in range(Dim):
             Mod[ii,jj] = Adj[ii,jj] - (Deg[ii]*Deg[jj])/M
             if(ii == jj):
               Mod[ii,jj] = - (Deg[ii]*Deg[jj])/M
 
         # Calc modularity degrees
-        DegM = np.zeros((Dim))
+        DegM = np.zeros([Dim])
         #print ("\n Mod degrees: ")
-        for ii in range(0,Dim):
-          for jj in range(0,Dim):
-           if(ii != jj):
+        for ii in range(Dim):
+          for jj in range(Dim):
+           if ii != jj:
               DegM[ii] = DegM[ii] + Mod[ii,jj]
               M = M + DegM[ii]
               #print ii,DegM[ii]
@@ -88,10 +91,10 @@ def buildMod(Adj, thresh):
         # Threshold mod
         nonzeros = 0
         no_edges = 0
-        for ii in range(0,Dim):
-          for jj in range(0,Dim):
+        for ii in range(Dim):
+          for jj in range(Dim):
             if ii != jj:
-              if(abs(Mod[ii,jj]) > thresh):
+              if abs(Mod[ii,jj]) > thresh:
                 nonzeros =  nonzeros + 1
               else:
                 Mod[ii,jj] = 0.0
@@ -211,8 +214,11 @@ def runDwave(Q, num_nodes, use_dwave, embedding, qsize, run_label):
       sampler  = FixedEmbeddingComposite(DWaveSampler(), embedding)
 
     subqubo_size = qsize
+    t0 = dt.datetime.now()
     response = QBSolv().sample_qubo(Q, solver=sampler,
                                        label=run_label)
+    wtime = dt.datetime.now() - t0
+    print('\n wall clock time = ', wtime)
 
     print('\n qbsolv response:')
     print(response)
@@ -259,6 +265,38 @@ def runDwave(Q, num_nodes, use_dwave, embedding, qsize, run_label):
 
     print('\ndwave  2 clusters of size:', c0, c1)
 
+  elif use_dwave == 4:
+    # Use D-Wave directly
+    sampler = DWaveCliqueSampler()
+    chain_strength = partial(uniform_torque_compensation, prefactor=2)
+    num_reads=1000
+
+    t0 = dt.datetime.now()
+    solution = sampler.sample_qubo(Q, num_reads=num_reads, chain_strength=chain_strength, label=run_label)
+    wtime = dt.datetime.now() - t0
+    print('\n wall clock time = ', wtime)
+    print('\nPercentage of samples with high rates of breaks (> 0.10) is ',
+          np.count_nonzero(solution.record.chain_break_fraction > 0.10)/num_reads*100)
+    print('\n dwave response:')
+    print(solution)
+    ss = solution.samples()
+    #print("\n dwave samples=" + str(list(solution.samples())))
+    #print('\nss = ', ss)
+    print(flush=True)
+
+    # Determine sizes of 2 clusters
+    cc = np.zeros([num_nodes])
+    c0 = 0
+    c1 = 0
+    for i in range(num_nodes):
+      if ss[0,i] == 0:
+        c0 = c0 + 1
+      else:
+        c1 = c1 + 1
+        cc[i] = 1
+
+    print('\ndwave direct 2 clusters of size:', c0, c1)
+
   cldet = [[] for i in range(2)]
   cdet = np.zeros([num_nodes])
   for i in range(num_nodes):
@@ -271,7 +309,7 @@ def runDwave(Q, num_nodes, use_dwave, embedding, qsize, run_label):
     print('cldet ', i, cldet[i])
   print(flush=True)
 
-  return cldet
+  return cc, cldet
 
 
 def runDwaveHybrid(Q, num_nodes, use_dwave, sub_qsize, run_label):
@@ -296,7 +334,10 @@ def runDwaveHybrid(Q, num_nodes, use_dwave, sub_qsize, run_label):
 
   # run the workflow
   init_state = hybrid.State.from_problem(bqm)
+  t0 = dt.datetime.now()
   solution = workflow.run(init_state).result()
+  wtime = dt.datetime.now() - t0
+  print('\n wall clock time = ', wtime)
 
   print(solution.samples)
   ss = np.zeros([1,num_nodes])
@@ -329,7 +370,7 @@ def runDwaveHybrid(Q, num_nodes, use_dwave, sub_qsize, run_label):
     print('cldet ', i, cldet[i])
   print(flush=True)
 
-  return cldet
+  return cc,cldet
 
 
 def makeAdj(H):
@@ -397,4 +438,17 @@ def clusterHybrid(B, use_dwave, qsize, run_label):
   #clind = lowEnergy(cldet, H)
 
   return cldet
+
+def calcModularityMetric(mtotal, modularity, part_number):
+  Dim = modularity.shape[1]
+  print ("\n Dim = ", Dim)
+  msum = 0.0
+  for ii in range(0, Dim):
+    for jj in range(0, Dim):
+      if part_number[ii] == part_number[jj]:
+        msum = msum + modularity[ii,jj]
+
+  mmetric = msum / (2.0 * mtotal)
+
+  return mmetric
 
