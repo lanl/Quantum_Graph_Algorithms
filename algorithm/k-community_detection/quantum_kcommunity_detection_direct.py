@@ -51,8 +51,8 @@ if __name__== '__main__':
   parser.add_argument('-beta', type=int, default=1, help='beta penalty constant: minimize edge cut')
   parser.add_argument('-gamma', type=int, default=-5, help='gamma penalty constant: each node in 1 part')
   parser.add_argument('-threshold', type=float, default=0.00, help='threshold value')
-  parser.add_argument('-label', default='qcd_qbsolv', help='label for run')
-  parser.add_argument('-qsize', type=int, default=64, help='qbsolv sub-qubo size')
+  parser.add_argument('-label', default='qcd_direct', help='label for run')
+  parser.add_argument('-qsize', type=int, default=64, help='direct qubo size')
 
   args = parser.parse_args()
 
@@ -103,7 +103,7 @@ if __name__== '__main__':
   result['nodes'] = num_nodes
   result['edges'] = num_edges
   result['size'] = num_nodes * num_parts
-  result['solver'] = 'DWAVE_Ocean_Qbsolv'
+  result['solver'] = 'DWAVE_Ocean_Direct'
   result['subqubo_size'] = qsize
 
   beta, gamma, GAMMA  = QCD.set_penalty_constant(num_nodes, num_blocks, beta0, gamma0)
@@ -121,12 +121,13 @@ if __name__== '__main__':
   Q = QCD.makeQubo(graph, modularity, beta, gamma, GAMMA, num_nodes, num_parts, num_blocks, threshold)
 
   # Create embedding for D-Wave
-  embedding = QCD.getEmbedding(qsize)
+  #embedding = QCD.getEmbedding(qsize)
+  embedding = []
   print('Create embedding')
   print(flush=True)
 
-  # Run k-clustering with qbsolv/D-Wave using ocean
-  ss = QCD.cluster(Q, num_parts, embedding, qsize, run_label, result)
+  # Run k-clustering with D-Wave using ocean
+  ss = QCD.clusterDirect(Q, num_parts, embedding, qsize, run_label, result)
 
   # Process solution
   part_number = QCD.process_solution(ss, graph, num_blocks, num_nodes, num_parts, result)

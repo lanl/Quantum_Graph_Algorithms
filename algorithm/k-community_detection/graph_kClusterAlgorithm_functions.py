@@ -9,6 +9,8 @@ from dwave.system.composites import EmbeddingComposite, FixedEmbeddingComposite
 import dimod
 import hybrid
 import minorminer
+from functools import partial
+from dwave.embedding.chain_strength import uniform_torque_compensation
 
 import networkx as nx
 from numpy import linalg as la
@@ -300,6 +302,17 @@ def calcModularityMetric(mtotal, modularity, part_number):
   return mmetric
 
 
+def calc_cut(graph, part_number):
+
+  cut = 0
+  for edge in graph.edges():
+    u, v = edge
+    if part_number[u] != part_number[v]:
+      cut += 1
+
+  return cut
+
+
 def run_qbsolv():
 
   rval = random.randint(1,1000)
@@ -385,6 +398,7 @@ def runDwave(Q, num_nodes, k, embedding, qsize, run_label, result):
   sampler  = FixedEmbeddingComposite(DWaveSampler(), embedding)
   #sampler  = DWaveCliqueSampler()
 
+  # Run using Dwave/qbsolv
   rval = random.randint(1,10000)
   t0 = dt.datetime.now()
   solution = QBSolv().sample_qubo(Q, solver=sampler, seed=rval,
@@ -415,6 +429,46 @@ def runDwave(Q, num_nodes, k, embedding, qsize, run_label, result):
   print(flush=True)
 
   return ss 
+
+def runDwaveDirect(Q, k, embedding, run_label, result):
+
+  # Using D-Wave direct
+  #sampler = DWaveCliqueSampler(annealing_time=15)
+  sampler = DWaveCliqueSampler()
+  chain_strength = partial(uniform_torque_compensation, prefactor=2)
+  num_reads=1000
+  
+  # Run directly on the Dwave 
+  t0 = dt.datetime.now()
+  solution = sampler.sample_qubo(Q, num_reads=num_reads, chain_strength=chain_strength, label=run_label)
+  wtime = dt.datetime.now() - t0
+  result['wall_clock_time'] = wtime
+  print('\nPercentage of samples with high rates of breaks (> 0.10) is ',
+          np.count_nonzero(solution.record.chain_break_fraction > 0.10)/num_reads*100)
+
+  # Collect first energy and num_occ, num diff solutions, and total solutions
+  first = True
+  ndiff = 0
+  total_solns = 0
+  for sample, energy, num_occurrences, other in solution.data():
+    #print(sample, "Energy: ", energy, "Occurrences: ", num_occurrences)
+    if first == True:
+      result['energy'] = energy
+      result['num_occ'] = num_occurrences
+      first = False
+    ndiff += 1
+    total_solns += num_occurrences
+  result['num_diff_solns'] = ndiff
+  result['total_solns'] = total_solns
+
+  print('\n dwave response:')
+  print(solution)
+  ss = solution.samples()
+  #print("\n dwave samples=" + str(list(solution.samples())))
+  #print('\nss = ', ss)
+  print(flush=True)
+
+  return ss
 
 def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label, result):
 
@@ -482,6 +536,13 @@ def cluster(Q, k, embedding, qsize, run_label, result):
 
   # Cluster into k parts using DWave
   ss = runDwave(Q, qsize, k, embedding, qsize, run_label, result)
+
+  return ss
+
+def clusterDirect(Q, k, embedding, qsize, run_label, result):
+
+  # Cluster into k parts using DWave directly
+  ss = runDwaveDirect(Q, k, embedding, run_label, result)
 
   return ss
 
