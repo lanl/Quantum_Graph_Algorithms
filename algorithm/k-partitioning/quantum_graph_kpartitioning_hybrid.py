@@ -81,6 +81,7 @@ if __name__== '__main__':
   num_edges = nx.number_of_edges(graph)
   print("\n\t Partitioning into %d parts...\n" %num_parts)
   print("Graph has %d nodes and %d edges" %(num_nodes, nx.number_of_edges(graph)))
+  print(flush=True)
 
   # Collect results to dictionary
   result = {}
@@ -92,6 +93,9 @@ if __name__== '__main__':
   result['size'] = num_nodes * num_parts
   result['solver'] = 'DWAVE_Hybrid'
   result['subqubo_size'] = qsize
+  result['alpha'] = alpha0
+  result['beta'] = beta0
+  result['gamma'] = gamma0
 
   # Set penalty constants
   beta, alpha, gamma, GAMMA  = QGP.set_penalty_constant(num_nodes, num_blocks, beta0, alpha0, gamma0)
@@ -99,12 +103,18 @@ if __name__== '__main__':
   # Create and write QUBO matrix to file
   laplacian = nx.laplacian_matrix(graph)
   Q = QGP.makeQubo(laplacian, alpha, beta, gamma, GAMMA, graph, num_nodes, num_parts, num_blocks)
+  print('QUBO created')
+  print(flush=True)
   
   # Run k-partitioning with Hybrid/D-Wave using ocean
   ss = QGP.partitionHybrid(Q, num_parts, qsize, run_label, result)
+  print('Partitioning run')
+  print(flush=True)
 
   # Process solution
   part_number = QGP.process_solution(ss, graph, num_blocks, num_nodes, num_parts, result)
+  print('Post-processed')
+  print(flush=True)
 
   GFU.write_partfile(graph, part_number, num_nodes, num_parts)
 

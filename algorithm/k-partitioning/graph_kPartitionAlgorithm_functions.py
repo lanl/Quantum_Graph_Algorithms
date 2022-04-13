@@ -445,12 +445,12 @@ def process_solution(ss, graph, num_blocks, num_nodes, num_parts, result):
 
   return part_number
 
-def getEmbedding():
+def getEmbedding(qsize):
 
-  subqubo_size = 64
+  subqubo_size = qsize 
   qsystem = DWaveSampler()
-  k64 = nx.complete_graph(64).edges()
-  embedding = minorminer.find_embedding(k64, qsystem.edgelist)
+  kqsize = nx.complete_graph(qsize).edges()
+  embedding = minorminer.find_embedding(kqsize, qsystem.edgelist)
   print('\nembedding done')
 
   return embedding
@@ -506,7 +506,8 @@ def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label, result):
   # define the workflow
   iteration = hybrid.Race(
     hybrid.InterruptableTabuSampler(),
-    hybrid.EnergyImpactDecomposer(size=sub_qsize, rolling=True, rolling_history=0.15)
+    #hybrid.EnergyImpactDecomposer(size=sub_qsize, rolling=True, rolling_history=0.15)
+    hybrid.EnergyImpactDecomposer(size=sub_qsize, rolling=True, rolling_history=1.00)
     #| hybrid.QPUSubproblemAutoEmbeddingSampler(num_reads=100, sampling_params=rparams)
     | QPUSubSamTime
     | hybrid.SplatComposer()

@@ -74,13 +74,16 @@ if __name__== '__main__':
 
   # Read in graph from mtx file
   graph = nx.Graph() 
-  graph = GFU.read_graph_file(graph, ifilename)
+  graph = GFU.read_graph_file0(graph, ifilename)
+  #graph = GFU.read_graph_file(graph, ifilename)
+  #graph = GFU.read_graph_file_unweighted2(graph, ifilename)
 
   num_blocks = num_parts 
   num_nodes = nx.number_of_nodes(graph)
   num_edges = nx.number_of_edges(graph)
   print("\n\t Partitioning into %d parts...\n" %num_parts)
   print("Graph has %d nodes and %d edges" %(num_nodes, nx.number_of_edges(graph)))
+  print(flush=True)
 
   # Collect results to dictionary
   result = {}
@@ -99,15 +102,23 @@ if __name__== '__main__':
   # Create and write QUBO matrix to file
   laplacian = nx.laplacian_matrix(graph)
   Q = QGP.makeQubo(laplacian, alpha, beta, gamma, GAMMA, graph, num_nodes, num_parts, num_blocks)
+  print('QUBO created')
+  print(flush=True)
   
   # Create embedding for D-Wave
-  embedding = QGP.getEmbedding()
+  embedding = QGP.getEmbedding(qsize)
+  print('Embedding done')
+  print(flush=True)
 
   # Run k-partitioning with qbsolv/D-Wave using ocean
   ss = QGP.partition(Q, num_parts, embedding, qsize, run_label, result)
+  print('Partitioning done')
+  print(flush=True)
 
   # Process solution
   part_number = QGP.process_solution(ss, graph, num_blocks, num_nodes, num_parts, result)
+  print('Postprocessing done')
+  print(flush=True)
 
   GFU.write_partfile(graph, part_number, num_nodes, num_parts)
 

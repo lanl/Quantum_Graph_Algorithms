@@ -145,6 +145,33 @@ def read_graph_file(G, prot_file):
   return G
 
 
+def read_graph_file0(G, prot_file):
+
+  gfile = open(prot_file, "r")
+  line = gfile.readline()
+  line = gfile.readline()
+  x = line.split()
+  n = x[0]
+  nedges = int(x[2])
+  print("graph ", n, " nodes ", nedges, " elements")
+
+  for i in range(0, nedges):
+    line = gfile.readline()
+    x = line.split()
+    n0 = int(x[0])
+    n1 = int(x[1])
+    if n0 != n1:
+      G.add_edge(n0,n1)
+    else:
+      G.add_node(n0)
+
+  gfile.close()
+
+  print("graph size =", G.size())
+
+  return G
+
+
 def read_graph_file_unweighted(G, prot_file):
 
   threshold =  0.0
@@ -165,6 +192,39 @@ def read_graph_file_unweighted(G, prot_file):
 
     if n0 != n1:
       if abs(eweight) > threshold:
+        G.add_edge(n0,n1)
+    else:
+      G.add_node(n0)
+
+  gfile.close()
+
+  print("graph size =", G.size())
+
+  return G
+
+
+def read_graph_file_unweighted2(G, prot_file):
+
+  threshold =  0.0
+  gfile = open(prot_file, "r")
+  line = gfile.readline()
+  line = gfile.readline()
+  x = line.split()
+  n = x[0]
+  nedges = int(x[2])
+  print("graph ", n, " nodes ", nedges, " edges")
+
+  for i in range(0, nedges):
+    line = gfile.readline()
+    x = line.split()
+    n0 = int(x[0]) - 1
+    n1 = int(x[1]) - 1
+    eweight = x[2]
+    #eweight = float(x[2])
+
+    #print(n0, n1, x[2])
+    if n0 != n1:
+      if x[2] != '0':
         G.add_edge(n0,n1)
     else:
       G.add_node(n0)
