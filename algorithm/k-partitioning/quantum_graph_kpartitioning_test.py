@@ -36,7 +36,7 @@ if __name__== '__main__':
 
   urllib3.disable_warnings()
 
-  parser = argparse.ArgumentParser(description='Quantum Graph Partitioning - Hybrid')
+  parser = argparse.ArgumentParser(description='Quantum Graph Partitioning - ocean/qbsolv')
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
   parser.add_argument('-pflag', type =int, default=0, help='0 - no plot, 1 - show plot')
   parser.add_argument('-ifile', help='input filename in mtx format')
@@ -44,8 +44,8 @@ if __name__== '__main__':
   parser.add_argument('-beta', type=int, default=1, help='beta penalty constant: minimize edge cut')
   parser.add_argument('-alpha', type=int, default=1000, help='alpha penalty constant: balancing')
   parser.add_argument('-gamma', type=int, default=5000, help='gamma penalty constant: each node in 1 part')
-  parser.add_argument('-label', default='qgp_hybrid', help='label for run')
-  parser.add_argument('-qsize', type=int, default=64, help='QPU sub-qubo size')
+  parser.add_argument('-label', default='qgp_qbsolv', help='label for run')
+  parser.add_argument('-qsize', type=int, default=64, help='qbsolv sub-qubo size')
 
   args = parser.parse_args()
  
@@ -77,7 +77,7 @@ if __name__== '__main__':
 
   # Read in graph from mtx file
   threshold = 0.0
-  graph = GFU.createGraph(ftype, ifilename, threshold)
+  graph = GFU.createGraph(ftype, ifilename, threshold) 
 
   num_blocks = num_parts 
   num_nodes = nx.number_of_nodes(graph)
@@ -94,11 +94,8 @@ if __name__== '__main__':
   result['nodes'] = num_nodes
   result['edges'] = num_edges
   result['size'] = num_nodes * num_parts
-  result['solver'] = 'DWAVE_Hybrid'
+  result['solver'] = 'DWAVE_Ocean_Qbsolv'
   result['subqubo_size'] = qsize
-  result['alpha'] = alpha0
-  result['beta'] = beta0
-  result['gamma'] = gamma0
 
   # Set penalty constants
   beta, alpha, gamma, GAMMA  = QGP.set_penalty_constant(num_nodes, num_blocks, beta0, alpha0, gamma0)
@@ -109,24 +106,30 @@ if __name__== '__main__':
   print('QUBO created')
   print(flush=True)
   
-  # Run k-partitioning with Hybrid/D-Wave using ocean
-  ss = QGP.partitionHybrid(Q, num_parts, qsize, run_label, result)
-  print('Partitioning run')
+  # Create embedding for D-Wave
+  embedding = QGP.getEmbedding(qsize)
+  print('Embedding done')
+  print(flush=True)
+
+  # Run k-partitioning with qbsolv/D-Wave using ocean
+  ss = QGP.partition(Q, num_parts, embedding, qsize, run_label, result)
+  print('Partitioning done')
   print(flush=True)
 
   # Process solution
-  part_number = QGP.process_solution(ss, graph, num_blocks, num_nodes, num_parts, result)
-  print('Post-processed')
-  print(flush=True)
+  for ii in range(20):
+    part_number = QGP.process_solution(ii, ss, graph, num_blocks, num_nodes, num_parts, result)
+    print('Postprocessing done', ii)
+    print(flush=True)
+
+    # Get results and compare to other tools (if available)
+    min_cut = QGP.compare_with_metis_and_kahip(graph, part_number, num_nodes, num_parts, num_blocks, result)
+    result['min_cut_metric'] = min_cut
 
   GFU.write_partfile(graph, part_number, num_nodes, num_parts)
 
-  # Get results and compare to other tools (if available)
-  min_cut = QGP.compare_with_metis_and_kahip(graph, part_number, num_nodes, num_parts, num_blocks, result)
-  result['min_cut_metric'] = min_cut
-
   GFU.write_resultFile(result)
 
-  # Show plot of clusters if requested
+  # Show plot of parts if requested
   if pflag == 1:
     GFU.show_partitions(graph, part_number)

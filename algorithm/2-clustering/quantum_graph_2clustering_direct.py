@@ -3,7 +3,7 @@ import numpy.linalg as la
 import networkx as nx
 
 from dwave_qbsolv import QBSolv
-from dwave.system.samplers import DWaveSampler, DWaveCliqueSampler
+from dwave.system.samplers import DWaveSampler
 from dwave.system.composites import EmbeddingComposite, FixedEmbeddingComposite
 from dimod.reference.samplers import ExactSolver
 import minorminer
@@ -43,47 +43,45 @@ if __name__== '__main__':
 
   urllib3.disable_warnings()
 
-  parser = argparse.ArgumentParser(description='Quantum Community Detection 2-clustering - D-Wave')
+  parser = argparse.ArgumentParser(description='Quantum Community Detection 2-clustering - D-Wave Direct')
   parser.add_argument('-ifile', help='input filename')
   parser.add_argument('-ftype', default='mtx', help='input file type (mtx, umtx, nmtx, mi)')
   parser.add_argument('-pflag', type=int, default=0, help='plot flag, 0-no 1-yes')
-  parser.add_argument('-usedwave', type=int, default=4, help='use dwave flag, 0-no 1-yes using Embedding, 2-yes using FixedEmbedding, 3-yes using comdline qbsolv, 4-yes using direct (Clique)')
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
-  parser.add_argument('-label', default='q2c_qbsolv', help='label for run')
-  parser.add_argument('-qsize', type=int, default=64, help='qbsolv sub-qubo size')
+  parser.add_argument('-label', default='q2cd_direct', help='label for run')
 
   args = parser.parse_args()
 
   print('input file  = ', args.ifile)
   print('file type = ', args.ftype)
   print('plot flag = ', args.pflag)
-  print('use dwave flag = ', args.usedwave)
   print('number parts = ', args.nparts)
   print('label = ', args.label)
-  print('qsize = ', args.qsize)
 
   ifile = args.ifile
   ftype = args.ftype
   pflag = args.pflag
-  use_dwave = args.usedwave 
   nparts = args.nparts
   run_label = args.label
-  qsize = args.qsize
  
+  # Read in file as graph
   threshold = 0.0
-
-  # Create one embedding if using D-Wave
-  if use_dwave > 0:
-    #embedding = QCD.getEmbedding()
-    embedding = []
-
-  # Read in graph based n type
   graph = GFU.createGraph(ftype, ifile, threshold)
 
   num_nodes = nx.number_of_nodes(graph)
   num_edges = nx.number_of_edges(graph)
   print ("\n\t community detection: up to %d communities...\n" %nparts)
   print ("Graph has %d nodes and %d edges" %(num_nodes, num_edges))
+
+  # Collect results to dictionary
+  result = {}
+  result['alg'] = 'LANL_2CD'
+  result['num_parts'] = nparts
+  result['dataset'] = ifile
+  result['nodes'] = num_nodes
+  result['edges'] = num_edges
+  result['size'] = num_nodes
+  result['solver'] = 'DWAVE_DIRECT'
 
   # Create Adjacency matrix A
   A = nx.adjacency_matrix(graph)
@@ -94,15 +92,25 @@ if __name__== '__main__':
   print('\nModularity matrix:\n', B)
 
   # Cluster into 2 parts
-  if use_dwave > 0:
-    print('\nusing dwave')
-    part_number, cdet = QCD.cluster(B, use_dwave, embedding, qsize, run_label)
-    #print('\ncdet = ', cdet)
-  else:
-    print('\n not using dwave - done')  
+  ss = QCD.clusterDirect(B, run_label, result)
+
+  # Process results
+  part_number,cdet = QCD.process_solution(ss, num_nodes)
 
   # Calculate modularity meetric
   mmetric = QCD.calcModularityMetric(mtotal, B, part_number)
   print('\nmodularity metric = ', mmetric)
+  result['modularity_metric'] = mmetric
+  mcut = QCD.calc_cut(graph, part_number)
+  print('\nMin cut = ', mcut)
+  result['minimum_cut'] = mcut
+  result['num_clusters_found'] = nparts
+  print(flush=True)
+
+  GFU.write_resultFile(result)
+
+  # Show plot of parts if requested
+  if pflag == 1:
+    GFU.showClusters(graph, part_number)
 
   exit(0)

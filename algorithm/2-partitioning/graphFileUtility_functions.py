@@ -42,11 +42,31 @@ def write_partfile(graph, part_number, num_nodes, num_parts):
   pfile = open(fname, "w")
   out = " ".join([str(num_nodes), "\n"])
   pfile.write(out)
-  for node in graph.nodes():
-    out = " ".join([str(node), str(part_number[node]), "\n"])
+  for node in range(num_nodes):
+    out = " ".join([str(node), str(int(part_number[node])), "\n"])
     pfile.write(out)
 
   pfile.close()
+
+
+def read_partFile(fname, nparts):
+  gfile = open(fname, "r")
+  line = gfile.readline()
+  x = line.split()
+  nnodes = int(x[0])
+  print('# nodes = ', nnodes, ' # parts = ', nparts, '\n')
+
+  part_number = {}
+  for i in range(nnodes):
+    line = gfile.readline()
+    x = line.split()
+    node = int(x[0])
+    part = int(x[1])
+    part_number[node] = part
+
+  gfile.close()
+
+  return part_number
 
 
 def write_mtx(graph):
@@ -154,12 +174,9 @@ def read_graph_file_zerobased(G, prot_file):
   line = gfile.readline()
   line = gfile.readline()
   x = line.split()
-  n = int(x[0])
+  n = x[0]
   nedges = int(x[2])
   print("graph ", n, " nodes ", nedges, " elements")
-
-  for i in range(n):
-    G.add_node(i)
 
   for i in range(0, nedges):
     line = gfile.readline()
@@ -170,6 +187,70 @@ def read_graph_file_zerobased(G, prot_file):
       G.add_edge(n0,n1)
     #else:
     #  G.add_node(n0)
+
+  gfile.close()
+
+  print("graph size =", G.size())
+
+  return G
+
+
+def read_graph_file_unweighted(G, prot_file):
+
+  threshold =  0.0
+  gfile = open(prot_file, "r")
+  line = gfile.readline()
+  line = gfile.readline()
+  x = line.split()
+  n = x[0]
+  nedges = int(x[2])
+  print("graph ", n, " nodes ", nedges, " edges")
+
+  for i in range(0, nedges):
+    line = gfile.readline()
+    x = line.split()
+    n0 = int(x[0]) - 1
+    n1 = int(x[1]) - 1
+    eweight = float(x[2])
+
+    if n0 != n1:
+      if abs(eweight) > threshold:
+        G.add_edge(n0,n1)
+    else:
+      G.add_node(n0)
+
+  gfile.close()
+
+  print("graph size =", G.size())
+
+  return G
+
+
+def read_graph_file_unweighted2(G, prot_file):
+
+  threshold =  0.0
+  gfile = open(prot_file, "r")
+  line = gfile.readline()
+  line = gfile.readline()
+  x = line.split()
+  n = x[0]
+  nedges = int(x[2])
+  print("graph ", n, " nodes ", nedges, " edges")
+
+  for i in range(0, nedges):
+    line = gfile.readline()
+    x = line.split()
+    n0 = int(x[0]) - 1
+    n1 = int(x[1]) - 1
+    eweight = x[2]
+    #eweight = float(x[2])
+
+    #print(n0, n1, x[2])
+    if n0 != n1:
+      if x[2] != '0':
+        G.add_edge(n0,n1)
+    else:
+      G.add_node(n0)
 
   gfile.close()
 
@@ -192,72 +273,6 @@ def createGraph(ftype, ifile, threshold):
 
   return graph
 
-
-def read_graph_file_unweighted(G, prot_file):
-
-  threshold =  0.0
-  gfile = open(prot_file, "r")
-  line = gfile.readline()
-  line = gfile.readline()
-  x = line.split()
-  n = int(x[0])
-  nedges = int(x[2])
-  print("graph ", n, " nodes ", nedges, " edges")
-
-  for i in range(0, nedges):
-    line = gfile.readline()
-    x = line.split()
-    n0 = int(x[0]) - 1
-    n1 = int(x[1]) - 1
-    eweight = float(x[2])
-
-    if n0 != n1:
-      if abs(eweight) > threshold:
-        G.add_edge(n0,n1)
-    #else:
-    #  G.add_node(n0)
-
-  gfile.close()
-
-  print("graph size =", G.size())
-
-  return G
-
-
-def read_graph_file_unweighted2(G, prot_file):
-
-  threshold =  0.0
-  gfile = open(prot_file, "r")
-  line = gfile.readline()
-  line = gfile.readline()
-  x = line.split()
-  n = int(x[0])
-  nedges = int(x[2])
-  print("graph ", n, " nodes ", nedges, " edges")
-
-  for i in range(n):
-    G.add_node(i)
-
-  for i in range(0, nedges):
-    line = gfile.readline()
-    x = line.split()
-    n0 = int(x[0]) - 1
-    n1 = int(x[1]) - 1
-    eweight = x[2]
-    #eweight = float(x[2])
-
-    #print(n0, n1, x[2])
-    if n0 != n1:
-      if x[2] != '0':
-        G.add_edge(n0,n1)
-    #else:
-    #  G.add_node(n0)
-
-  gfile.close()
-
-  print("graph size =", G.size())
-
-  return G
 
 
 def write_metis_graph_file(graph):

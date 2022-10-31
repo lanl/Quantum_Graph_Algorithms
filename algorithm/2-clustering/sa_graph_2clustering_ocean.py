@@ -2,8 +2,9 @@ import numpy as np
 import numpy.linalg as la
 import networkx as nx
 
+import neal
 from dwave_qbsolv import QBSolv
-from dwave.system.samplers import DWaveSampler
+from dwave.system.samplers import DWaveSampler, DWaveCliqueSampler
 from dwave.system.composites import EmbeddingComposite, FixedEmbeddingComposite
 from dimod.reference.samplers import ExactSolver
 import minorminer
@@ -43,13 +44,12 @@ if __name__== '__main__':
 
   urllib3.disable_warnings()
 
-  parser = argparse.ArgumentParser(description='Quantum Community Detection 2-clustering - hybrid workflow')
+  parser = argparse.ArgumentParser(description='Quantum Community Detection 2-clustering - SA')
   parser.add_argument('-ifile', help='input filename')
-  parser.add_argument('-ftype', default='mtx', help='input file type (mtx, umtx, nmtx, mi)')
+  parser.add_argument('-ftype', default='mtx', help='input file type (mtx, 0mtx, umtx, nmtx, mi)')
   parser.add_argument('-pflag', type=int, default=0, help='plot flag, 0-no 1-yes')
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
-  parser.add_argument('-label', default='q2cd_hybrid', help='label for run')
-  parser.add_argument('-qsize', type=int, default=64, help='hybrid sub-qubo size')
+  parser.add_argument('-label', default='q2c_sa', help='label for run')
 
   args = parser.parse_args()
 
@@ -58,19 +58,17 @@ if __name__== '__main__':
   print('plot flag = ', args.pflag)
   print('number parts = ', args.nparts)
   print('label = ', args.label)
-  print('qsize = ', args.qsize)
 
   ifile = args.ifile
   ftype = args.ftype
   pflag = args.pflag
   nparts = args.nparts
   run_label = args.label
-  qsize = args.qsize
  
-  # Read in file as graph
+  # Read in graph based n type
   threshold = 0.0
-  graph = GFU.createGraph(ftype, ifile, threshold) 
-  
+  graph = GFU.createGraph(ftype, ifile, threshold)
+
   num_nodes = nx.number_of_nodes(graph)
   num_edges = nx.number_of_edges(graph)
   print ("\n\t community detection: up to %d communities...\n" %nparts)
@@ -84,8 +82,7 @@ if __name__== '__main__':
   result['nodes'] = num_nodes
   result['edges'] = num_edges
   result['size'] = num_nodes
-  result['solver'] = 'DWAVE_HYBRID'
-  result['subqubo_size'] = qsize
+  result['solver'] = 'DWAVE_SA'
 
   # Create Adjacency matrix A
   A = nx.adjacency_matrix(graph)
@@ -95,13 +92,13 @@ if __name__== '__main__':
   mtotal,B = QCD.buildMod(A, threshold)
   print('\nModularity matrix:\n', B)
 
-  # Cluster into 2 parts
-  ss = QCD.clusterHybrid(B, num_nodes, qsize, run_label, result)
+  # Cluster into 2 parts using SA
+  ss = QCD.clusterSA(B, num_nodes, result)
 
   # Process solution
   part_number,cdet = QCD.process_solution(ss, num_nodes)
 
-  # Calculate modularity meetric
+  # Calculate modularity metric
   mmetric = QCD.calcModularityMetric(mtotal, B, part_number)
   print('\nmodularity metric = ', mmetric)
   result['modularity_metric'] = mmetric

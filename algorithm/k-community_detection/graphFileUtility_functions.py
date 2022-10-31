@@ -348,9 +348,12 @@ def read_graph_file_noweights(G, prot_file):
   line = gfile.readline()
   line = gfile.readline()
   x = line.split()
-  n = x[0]
+  n = int(x[0])
   nedges = int(x[2])
   print("graph ", n, " nodes ", nedges, " elements")
+
+  for i in range(n):
+    G.add_node(i)
 
   for i in range(0, nedges):
     line = gfile.readline()
@@ -359,8 +362,8 @@ def read_graph_file_noweights(G, prot_file):
     n1 = int(x[1]) - 1
     if n0 != n1:
       G.add_edge(n0,n1)
-    else:
-      G.add_node(n0)
+    #else:
+    #  G.add_node(n0)
 
   gfile.close()
 

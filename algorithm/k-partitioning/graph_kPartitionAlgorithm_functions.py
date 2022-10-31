@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import re, os, sys
 
 from dwave_qbsolv import QBSolv
-from dwave.system.samplers import DWaveSampler
+from dwave.system.samplers import DWaveSampler, DWaveCliqueSampler
 from dwave.system.composites import FixedEmbeddingComposite
 import dimod
 import hybrid
@@ -207,7 +207,7 @@ def violating_contraints(graph, x_indx, num_blocks, num_nodes, num_parts, result
   result['num_parts_found'] = num_parts_found
     
 
-def compute_cut_ocean(graph, part_number, num_nodes, num_parts, num_blocks):
+def compute_cut(graph, part_number, num_nodes, num_parts, num_blocks):
 
   nodes_in_part = [[] for i in range(num_parts)]
 
@@ -236,7 +236,7 @@ def compute_cut_ocean(graph, part_number, num_nodes, num_parts, num_blocks):
   return cut
 
 
-def compute_cut(graph, bit_string, num_nodes, num_parts, num_blocks, result):
+def compute_cut_qbsolv(graph, bit_string, num_nodes, num_parts, num_blocks, result):
   
   nodes_in_part = [[] for i in range(num_parts)]
   x_indx = {}
@@ -349,9 +349,9 @@ def set_penalty_constant(num_nodes, num_blocks, beta0, alpha0, gamma0):
  #########
  
 
-def compare_with_metis_and_kahip_ocean(graph, part_number, num_nodes, num_parts, num_blocks, result):
+def compare_with_metis_and_kahip(graph, part_number, num_nodes, num_parts, num_blocks, result):
 
-  qubo_cut = compute_cut_ocean(graph, part_number, num_nodes, num_parts, num_blocks)
+  qubo_cut = compute_cut(graph, part_number, num_nodes, num_parts, num_blocks)
 
   write_metis_graph_file(graph)
   #os.system("./gpmetis -ufactor=1 graph.txt "+str(num_parts)+"  > metis_output.out") 
@@ -364,7 +364,7 @@ def compare_with_metis_and_kahip_ocean(graph, part_number, num_nodes, num_parts,
 
   fedges = float(nx.number_of_edges(graph))
   print('\nEdge cut results:')
-  print("qbsolv cut: ", qubo_cut, " fraction: ", float(qubo_cut)/fedges)
+  print("dwave cut: ", qubo_cut, " fraction: ", float(qubo_cut)/fedges)
   if metis_cut > 0:
     print("metis cut: ",metis_cut, " fraction: ", float(metis_cut)/fedges)
   if kaffpa_cut > 0:
@@ -375,9 +375,9 @@ def compare_with_metis_and_kahip_ocean(graph, part_number, num_nodes, num_parts,
   return qubo_cut
 
 
-def compare_with_metis_and_kahip(graph, bit_string, num_nodes, num_parts, num_blocks):
+def compare_with_metis_and_kahip_qbsolv(graph, bit_string, num_nodes, num_parts, num_blocks):
 
-  qubo_cut, part_number = compute_cut(graph, bit_string, num_nodes, num_parts, num_blocks, result)
+  qubo_cut, part_number = compute_cut_qbsolv(graph, bit_string, num_nodes, num_parts, num_blocks, result)
 
   write_metis_graph_file(graph)
   #os.system("./gpmetis -ufactor=1 graph.txt "+str(num_parts)+"  > metis_output.out") 
@@ -418,10 +418,12 @@ def process_solution_qbsolv(graph, num_blocks, num_nodes, num_parts):
   return bit_string
 
 def process_solution(ss, graph, num_blocks, num_nodes, num_parts, result):
+#def process_solution(ii, ss, graph, num_blocks, num_nodes, num_parts, result):
 
   qsol = {}
   for i in range(num_blocks*num_nodes):
     qsol[i] = int(ss[0,i])
+    #qsol[i] = int(ss[ii,i])
 
   qtotal = 0
   for i in range(num_blocks*num_nodes):
@@ -464,7 +466,7 @@ def runDwave(Q, num_nodes, k, embedding, sub_qsize, run_label, result):
 
   rval = random.randint(1,10000)
   t0 = dt.datetime.now()
-  solution = QBSolv().sample_qubo(Q, solver=sampler, seed=rval,
+  solution = QBSolv().sample_qubo(Q, solver=sampler, seed=rval, solver_limit=sub_qsize,
                            label=run_label)
   wtime = dt.datetime.now() - t0
   result['wall_clock_time'] = wtime
@@ -507,7 +509,8 @@ def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label, result):
   iteration = hybrid.Race(
     hybrid.InterruptableTabuSampler(),
     #hybrid.EnergyImpactDecomposer(size=sub_qsize, rolling=True, rolling_history=0.15)
-    hybrid.EnergyImpactDecomposer(size=sub_qsize, rolling=True, rolling_history=1.00)
+    #hybrid.EnergyImpactDecomposer(size=sub_qsize, rolling=True, rolling_history=1.00)
+    hybrid.EnergyImpactDecomposer(size=sub_qsize, rolling=True, rolling_history=0.30)
     #| hybrid.QPUSubproblemAutoEmbeddingSampler(num_reads=100, sampling_params=rparams)
     | QPUSubSamTime
     | hybrid.SplatComposer()

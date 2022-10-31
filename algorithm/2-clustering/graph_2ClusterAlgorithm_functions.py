@@ -2,6 +2,7 @@ import numpy as np
 import numpy.linalg as la
 import networkx as nx
 
+import neal
 from dwave_qbsolv import QBSolv
 from dwave.system.samplers import DWaveSampler, DWaveCliqueSampler
 from dwave.system.composites import EmbeddingComposite, FixedEmbeddingComposite
@@ -20,6 +21,9 @@ import os
 import sys
 import random
 import datetime as dt
+
+import graphFileUtility_functions as GFU
+from qpu_sampler_time import QPUTimeSubproblemAutoEmbeddingSampler
 
 #
 # The Quantum Graph Community Detection Algorithm has been described
@@ -192,157 +196,92 @@ def get_qubo_solution():
   return qsol, energy
 
 
-def getEmbedding():
+def getEmbedding(qsize):
 
-  subqubo_size = 64
   qsystem = DWaveSampler()
-  k64 = nx.complete_graph(64).edges()
-  embedding = minorminer.find_embedding(k64, qsystem.edgelist)
+  ksize = nx.complete_graph(qsize).edges()
+  embedding = minorminer.find_embedding(ksize, qsystem.edgelist)
   print('\nembedding done')
 
   return embedding
 
 
-def runDwave(Q, num_nodes, use_dwave, embedding, qsize, run_label):
+def runDwave(Q, embedding, run_label, result):
 
-  if use_dwave == 1 or use_dwave == 2:
-    # Using D-Wave/qbsolv
-    # Needed when greater than the number of nodes/variables that fit on D-Wave
-    if use_dwave == 1:
-      sampler = EmbeddingComposite(DWaveSampler())
-    else:
-      sampler  = FixedEmbeddingComposite(DWaveSampler(), embedding)
+  sampler  = FixedEmbeddingComposite(DWaveSampler(), embedding)
 
-    subqubo_size = qsize
-    t0 = dt.datetime.now()
-    response = QBSolv().sample_qubo(Q, solver=sampler,
-                                       label=run_label)
-    wtime = dt.datetime.now() - t0
-    print('\n wall clock time = ', wtime)
-
-    print('\n qbsolv response:')
-    print(response)
-    ss = response.samples()
-    #print("\n qbsolv samples=" + str(list(response.samples())))
-    print(flush=True)
- 
-    # Determine sizes of 2 clusters
-    cc = np.zeros([num_nodes])
-    c0 = 0
-    c1 = 0
-    for i in range(num_nodes):
-      if ss[0,i] == 0:
-        c0 = c0 + 1
-      else:
-        c1 = c1 + 1
-        cc[i] = 1
- 
-    print('\ndwave  2 clusters of size:', c0, c1)
-    print('\ncc = ', cc)
-  
-  elif use_dwave == 3:
-    # Use command-line qbsolv+D-Wave
-    qubo2file(Q, num_nodes)
-    rval = random.randint(1,1000)
-    estring = "qbsolv -r " + str(rval) + " -i graph.qubo -o dwave_output.out"
-    print(estring)
-    os.system(estring)
-    ss, qmin = get_qubo_solution()
-    #print('\nss = ', ss)
-    #print('\nqmin = ', qmin)
-    print(flush=True)
-
-    # Determine sizes of 2 clusters
-    cc = np.zeros([num_nodes])
-    c0 = 0
-    c1 = 0
-    for i in range(num_nodes):
-      if ss[i] == 0:
-        c0 = c0 + 1
-      else:
-        c1 = c1 + 1
-        cc[i] = 1
-
-    print('\ndwave  2 clusters of size:', c0, c1)
-
-  elif use_dwave == 4:
-    # Use D-Wave directly
-    sampler = DWaveCliqueSampler()
-    chain_strength = partial(uniform_torque_compensation, prefactor=2)
-    num_reads=1000
-
-    t0 = dt.datetime.now()
-    solution = sampler.sample_qubo(Q, num_reads=num_reads, chain_strength=chain_strength, label=run_label)
-    wtime = dt.datetime.now() - t0
-    print('\n wall clock time = ', wtime)
-    print('\nPercentage of samples with high rates of breaks (> 0.10) is ',
-          np.count_nonzero(solution.record.chain_break_fraction > 0.10)/num_reads*100)
-    print('\n dwave response:')
-    print(solution)
-    ss = solution.samples()
-    #print("\n dwave samples=" + str(list(solution.samples())))
-    #print('\nss = ', ss)
-    print(flush=True)
-
-    # Determine sizes of 2 clusters
-    cc = np.zeros([num_nodes])
-    c0 = 0
-    c1 = 0
-    for i in range(num_nodes):
-      if ss[0,i] == 0:
-        c0 = c0 + 1
-      else:
-        c1 = c1 + 1
-        cc[i] = 1
-
-    print('\ndwave direct 2 clusters of size:', c0, c1)
-
-  cldet = [[] for i in range(2)]
-  cdet = np.zeros([num_nodes])
-  for i in range(num_nodes):
-    cdet[i] = i
-
-  cldet[0] = cdet[cc == 0]
-  cldet[1] = cdet[cc == 1]
-  print('\ndwave  2 clusters of size:', c0, c1)
-  for i in range(2):
-    print('cldet ', i, cldet[i])
-  print(flush=True)
-
-  return cc, cldet
-
-
-def runDwaveHybrid(Q, num_nodes, use_dwave, sub_qsize, run_label):
-
-  if use_dwave == 3:
-    print('\nThe hybrid version of 2-clustering does not work with option 3')
-    exit(1)
-
-  bqm = dimod.BQM.from_qubo(Q)
-
-  rparams = {}
-  rparams['label'] = run_label
-
-  # define the workflow
-  iteration = hybrid.Race(
-    hybrid.InterruptableTabuSampler(),
-    hybrid.EnergyImpactDecomposer(size=sub_qsize, rolling=True, rolling_history=0.15)
-    | hybrid.QPUSubproblemAutoEmbeddingSampler(num_reads=100, sampling_params=rparams)
-    | hybrid.SplatComposer()
-  ) | hybrid.MergeSamples(aggregate=True)
-  workflow = hybrid.LoopUntilNoImprovement(iteration, convergence=3)
-
-  # run the workflow
-  init_state = hybrid.State.from_problem(bqm)
   t0 = dt.datetime.now()
-  solution = workflow.run(init_state).result()
+  response = QBSolv().sample_qubo(Q, solver=sampler, label=run_label)
   wtime = dt.datetime.now() - t0
   print('\n wall clock time = ', wtime)
+  result['wall_clock_time'] = wtime
 
-  print(solution.samples)
-  ss = np.zeros([1,num_nodes])
-  for i in range(num_nodes):
-    ss[0,i] = solution.samples.first.sample[i]
+  # Collect first energy and num_occ, num diff solutions, and total solutions
+  first = True
+  ndiff = 0
+  total_solns = 0
+  for sample, energy, num_occurrences in response.data():
+    #print(sample, "Energy: ", energy, "Occurrences: ", num_occurrences)
+    if first == True:
+      result['energy'] = energy
+      result['num_occ'] = num_occurrences
+      first = False
+    ndiff += 1
+    total_solns += num_occurrences
+  result['num_diff_solns'] = ndiff
+  result['total_solns'] = total_solns
+
+  print('\n qbsolv response:')
+  print(response)
+  ss = response.samples()
+  #print("\n qbsolv samples=" + str(list(response.samples())))
+  print(flush=True)
+  
+  return ss
+ 
+  
+def runDwaveDirect(Q, run_label, result):
+
+  # Use D-Wave directly
+  sampler = DWaveCliqueSampler()
+  chain_strength = partial(uniform_torque_compensation, prefactor=2)
+  num_reads=1000
+
+  t0 = dt.datetime.now()
+  solution = sampler.sample_qubo(Q, num_reads=num_reads, chain_strength=chain_strength, label=run_label)
+  wtime = dt.datetime.now() - t0
+  result['wall_clock_time'] = wtime
+
+  print('\n wall clock time = ', wtime)
+  print('\nPercentage of samples with high rates of breaks (> 0.10) is ',
+        np.count_nonzero(solution.record.chain_break_fraction > 0.10)/num_reads*100)
+
+  # Collect first energy and num_occ, num diff solutions, and total solutions
+  first = True
+  ndiff = 0
+  total_solns = 0
+  for sample, energy, num_occurrences, other in solution.data():
+    #print(sample, "Energy: ", energy, "Occurrences: ", num_occurrences)
+    if first == True:
+      result['energy'] = energy
+      result['num_occ'] = num_occurrences
+      first = False
+    ndiff += 1
+    total_solns += num_occurrences
+  result['num_diff_solns'] = ndiff
+  result['total_solns'] = total_solns
+
+  print('\n dwave direct response:')
+  print(solution)
+  ss = solution.samples()
+  #print("\n dwave samples=" + str(list(solution.samples())))
+  #print('\nss = ', ss)
+  print(flush=True)
+
+  return ss
+
+
+def process_solution(ss, num_nodes):
 
   # Determine sizes of 2 clusters
   cc = np.zeros([num_nodes])
@@ -355,8 +294,7 @@ def runDwaveHybrid(Q, num_nodes, use_dwave, sub_qsize, run_label):
       c1 = c1 + 1
       cc[i] = 1
 
-  print('\ndwave  2 clusters of size:', c0, c1)
-  print('\ncc = ', cc)
+  print('\n2 clusters of size:', c0, c1)
 
   cldet = [[] for i in range(2)]
   cdet = np.zeros([num_nodes])
@@ -365,12 +303,100 @@ def runDwaveHybrid(Q, num_nodes, use_dwave, sub_qsize, run_label):
 
   cldet[0] = cdet[cc == 0]
   cldet[1] = cdet[cc == 1]
-  print('\ndwave  2 clusters of size:', c0, c1)
   for i in range(2):
     print('cldet ', i, cldet[i])
   print(flush=True)
 
-  return cc,cldet
+  return cc, cldet
+
+
+def runSA(Q, num_nodes, result):
+
+  sampler  = neal.SimulatedAnnealingSampler()
+  num_reads=1
+
+  t0 = dt.datetime.now()
+  response = sampler.sample_qubo(Q, num_reads=num_reads)
+  wtime = dt.datetime.now() - t0
+  result['wall_clock_time'] = wtime
+  print('\n wall clock time = ', wtime)
+
+  # Collect first energy and num_occ, num diff solutions, and total solutions
+  first = True
+  ndiff = 0
+  total_solns = 0
+  for sample, energy, num_occurrences in response.data():
+    #print(sample, "Energy: ", energy, "Occurrences: ", num_occurrences)
+    if first == True:
+      result['energy'] = energy
+      result['num_occ'] = num_occurrences
+      first = False
+    ndiff += 1
+    total_solns += num_occurrences
+  result['num_diff_solns'] = ndiff
+  result['total_solns'] = total_solns
+
+  print('\n SA response:')
+  print(response)
+  ss = response.samples()
+  #print("\n qbsolv samples=" + str(list(response.samples())))
+  print(flush=True)  
+
+  return ss
+
+
+def runDwaveHybrid(Q, num_nodes, sub_qsize, run_label, result):
+
+  bqm = dimod.BQM.from_qubo(Q)
+
+  rparams = {}
+  rparams['label'] = run_label
+
+  # QPU sampler with timing
+  QPUSubSamTime = QPUTimeSubproblemAutoEmbeddingSampler(num_reads=100, sampling_params=rparams)
+
+  # define the workflow
+  iteration = hybrid.Race(
+    hybrid.InterruptableTabuSampler(),
+    #hybrid.EnergyImpactDecomposer(size=sub_qsize, rolling=True, rolling_history=0.15)
+    hybrid.EnergyImpactDecomposer(size=sub_qsize, rolling=True, rolling_history=1.00)
+    #| hybrid.QPUSubproblemAutoEmbeddingSampler(num_reads=100, sampling_params=rparams)
+    | QPUSubSamTime
+    | hybrid.SplatComposer()
+  ) | hybrid.MergeSamples(aggregate=True)
+  workflow = hybrid.LoopUntilNoImprovement(iteration, convergence=3)
+
+  # run the workflow
+  init_state = hybrid.State.from_problem(bqm)
+  t0 = dt.datetime.now()
+  solution = workflow.run(init_state).result()
+  wtime = dt.datetime.now() - t0
+  print('\n wall clock time = ', wtime)
+
+  result['wall_clock_time'] = wtime
+
+  # Collect number of QPU accesses and QPU time used
+  result['num_qpu_accesses'] = QPUSubSamTime.num_accesses
+  result['total_qpu_time'] = QPUSubSamTime.total_qpu_time
+
+  # Collect from lowest energy result
+  result['energy'] = solution.samples.first.energy
+  result['num_occ'] = solution.samples.first.num_occurrences
+
+  # Collect number of different solutions w different energies
+  result['num_diff_solns'] = len(solution.samples)
+
+  total_solns = 0
+  for energy, num_occ in solution.samples.data(['energy', 'num_occurrences']):
+    total_solns += num_occ
+  result['total_solns'] = total_solns
+
+  print(solution.samples)
+  ss = np.zeros([1,num_nodes])
+  for i in range(num_nodes):
+    ss[0,i] = solution.samples.first.sample[i]
+
+  return ss
 
 
 def makeAdj(H):
@@ -404,7 +430,21 @@ def lowEnergy(cldet, H):
   return clind
 
 
-def cluster(B, use_dwave, embedding, qsize, run_label):
+def cluster(B, embedding, run_label, result):
+
+  # Create the qubo from the modularity matrix
+  Q = makeQubo(B)
+
+  # Cluster into 2 parts using DWave
+  cldet = runDwave(Q, embedding, run_label, result)
+
+  # Determine which of the 2 clusters has the lower energy
+  #clind = lowEnergy(cldet, H)
+
+  return cldet
+
+
+def clusterSA(B, num_nodes, result):
 
   # Start with B
   bsize = B.shape[1]
@@ -413,8 +453,8 @@ def cluster(B, use_dwave, embedding, qsize, run_label):
   # Create the qubo from the modularity matrix
   Q = makeQubo(B)
 
-  # Cluster into 2 parts using DWave
-  cldet = runDwave(Q, bsize, use_dwave, embedding, qsize, run_label)
+  # Cluster into 2 parts usingSA 
+  cldet = runSA(Q, num_nodes, result)
 
   # Determine which of the 2 clusters has the lower energy
   #clind = lowEnergy(cldet, H)
@@ -422,22 +462,33 @@ def cluster(B, use_dwave, embedding, qsize, run_label):
   return cldet
 
 
-def clusterHybrid(B, use_dwave, qsize, run_label):
-
-  # Start with B
-  bsize = B.shape[1]
-  print('\n B size = ', bsize)
+def clusterHybrid(B, num_nodes, qsize, run_label, result):
 
   # Create the qubo from the modularity matrix
   Q = makeQubo(B)
 
   # Cluster into 2 parts using DWave
-  cldet = runDwaveHybrid(Q, bsize, use_dwave, qsize, run_label)
+  cldet = runDwaveHybrid(Q, num_nodes, qsize, run_label, result)
+
+  # Determine which of the 2 clusters has the lower energy
+  #clind = lowEnergy(cldet, H)
+
+  return cldet 
+
+
+def clusterDirect(B, run_label, result):
+
+  # Create the qubo from the modularity matrix
+  Q = makeQubo(B)
+
+  # Cluster into 2 parts using DWave
+  cldet = runDwaveDirect(Q, run_label, result)
 
   # Determine which of the 2 clusters has the lower energy
   #clind = lowEnergy(cldet, H)
 
   return cldet
+
 
 def calcModularityMetric(mtotal, modularity, part_number):
   Dim = modularity.shape[1]
@@ -452,3 +503,13 @@ def calcModularityMetric(mtotal, modularity, part_number):
 
   return mmetric
 
+
+def calc_cut(graph, part_number):
+
+  cut = 0
+  for edge in graph.edges():
+    u, v = edge
+    if part_number[u] != part_number[v]:
+      cut += 1
+
+  return cut

@@ -40,6 +40,7 @@ if __name__== '__main__':
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
   parser.add_argument('-pflag', type =int, default=0, help='0 - no plot, 1 - show plot')
   parser.add_argument('-ifile', help='input filename in mtx format')
+  parser.add_argument('-ftype', default='mtx', help='file type: mtx, 0mtx')
   parser.add_argument('-beta', type=int, default=1, help='beta penalty constant: minimize edge cut')
   parser.add_argument('-alpha', type=int, default=1000, help='alpha penalty constant: balancing')
   parser.add_argument('-gamma', type=int, default=5000, help='gamma penalty constant: each node in 1 part')
@@ -51,6 +52,7 @@ if __name__== '__main__':
   print('number parts = ', args.nparts)
   print('plot flag = ', args.pflag)
   print('mtx file = ', args.ifile)
+  print('ftype = ', args.ftype)
   print('beta = ', args.beta)
   print('alpha = ', args.alpha)
   print('gamma = ', args.gamma)
@@ -61,6 +63,7 @@ if __name__== '__main__':
   num_parts = args.nparts
   pflag = args.pflag
   ifilename = args.ifile
+  ftype = args.ftype
   beta0 = args.beta
   alpha0 = args.alpha
   gamma0 = args.gamma
@@ -73,10 +76,8 @@ if __name__== '__main__':
   ###
 
   # Read in graph from mtx file
-  graph = nx.Graph() 
-  graph = GFU.read_graph_file0(graph, ifilename)
-  #graph = GFU.read_graph_file(graph, ifilename)
-  #graph = GFU.read_graph_file_unweighted2(graph, ifilename)
+  threshold = 0.0
+  graph = GFU.createGraph(ftype, ifilename, threshold) 
 
   num_blocks = num_parts 
   num_nodes = nx.number_of_nodes(graph)
@@ -123,11 +124,11 @@ if __name__== '__main__':
   GFU.write_partfile(graph, part_number, num_nodes, num_parts)
 
   # Get results and compare to other tools (if available)
-  min_cut = QGP.compare_with_metis_and_kahip_ocean(graph, part_number, num_nodes, num_parts, num_blocks, result)
+  min_cut = QGP.compare_with_metis_and_kahip(graph, part_number, num_nodes, num_parts, num_blocks, result)
   result['min_cut_metric'] = min_cut
 
   GFU.write_resultFile(result)
 
-  # Show plot of clusters if requested
+  # Show plot of parts if requested
   if pflag == 1:
     GFU.show_partitions(graph, part_number)

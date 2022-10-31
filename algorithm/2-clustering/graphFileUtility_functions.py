@@ -151,9 +151,12 @@ def read_graph_file_noweights(G, prot_file):
   line = gfile.readline()
   line = gfile.readline()
   x = line.split()
-  n = x[0]
+  n = int(x[0])
   nedges = int(x[2])
   print("graph ", n, " nodes ", nedges, " elements")
+
+  for i in range(n):
+    G.add_node(i)
 
   for i in range(0, nedges):
     line = gfile.readline()
@@ -172,6 +175,36 @@ def read_graph_file_noweights(G, prot_file):
   return G
 
 
+def read_graph_file_zerobased(G, prot_file):
+
+  gfile = open(prot_file, "r")
+  line = gfile.readline()
+  line = gfile.readline()
+  x = line.split()
+  n = int(x[0])
+  nedges = int(x[2])
+  print("graph ", n, " nodes ", nedges, " elements")
+
+  for i in range(n):
+    G.add_node(i)
+
+  for i in range(0, nedges):
+    line = gfile.readline()
+    x = line.split()
+    n0 = int(x[0])
+    n1 = int(x[1])
+    if n0 != n1:
+      G.add_edge(n0,n1)
+    #else:
+    #  G.add_node(n0)
+
+  gfile.close()
+
+  print("graph size =", G.size())
+
+  return G  
+
+
 def createGraph(ftype, ifile, threshold):
 
   # Read in file as graph
@@ -179,6 +212,10 @@ def createGraph(ftype, ifile, threshold):
   # Weighted mtx
   if ftype == 'mtx':
     graph = read_graph_file(graph, ifile, threshold)
+
+  # Zero-based mtx
+  elif ftype == '0mtx':
+    graph = read_graph_file_zerobased(graph, ifile)
 
   # Unweighted mtx
   elif ftype =='umtx':
@@ -193,3 +230,36 @@ def createGraph(ftype, ifile, threshold):
     graph = read_mi_file(graph, ifile, threshold)
 
   return graph
+
+
+def showClusters(part_number, graph):
+
+    #drawing
+    color = {0:'red', 1:'blue', 2:'green', 3:'turquoise', 4:'yellow', 5:'orange', 6:'violet', 7:'pink', 8:'grey', 9:'black', 10:'teal', 11:'purple', 12:'cyan', 13:'magenta', 14:'brown'}
+    partition = part_number
+    size = float(len(set(partition.values())))
+    pos = nx.spring_layout(graph)
+    count = 0.
+    for com in set(partition.values()) :
+      count = count + 1.
+      print (com)
+      list_nodes = [nodes for nodes in partition.keys()
+                                  if partition[nodes] == com]
+      nx.draw_networkx_nodes(graph, pos, list_nodes, node_size = 80,
+                                  node_color = color[com] ) #str(count / size))
+
+    nx.draw_networkx_edges(graph, pos, alpha=0.5)
+    plt.show()
+
+
+def write_resultFile(result):
+
+    print('\nResult info:\n', result)
+
+    resultFile = open("result.txt", "w")
+
+    result_string=str(result)+'\n'
+    resultFile.write(result_string)
+
+    resultFile.close()
+

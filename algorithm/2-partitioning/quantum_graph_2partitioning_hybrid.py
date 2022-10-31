@@ -18,7 +18,7 @@ import argparse
 from scipy.sparse import csr_matrix
 import urllib3
 
-import graph_kPartitionAlgorithm_functions as QGP
+import graph_2PartitionAlgorithm_functions as QGP
 import graphFileUtility_functions as GFU
 
 #
@@ -36,7 +36,7 @@ if __name__== '__main__':
 
   urllib3.disable_warnings()
 
-  parser = argparse.ArgumentParser(description='Quantum Graph Partitioning - Hybrid')
+  parser = argparse.ArgumentParser(description='Quantum Graph 2-Partitioning - hybrid workflow')
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
   parser.add_argument('-pflag', type =int, default=0, help='0 - no plot, 1 - show plot')
   parser.add_argument('-ifile', help='input filename in mtx format')
@@ -44,15 +44,15 @@ if __name__== '__main__':
   parser.add_argument('-beta', type=int, default=1, help='beta penalty constant: minimize edge cut')
   parser.add_argument('-alpha', type=int, default=1000, help='alpha penalty constant: balancing')
   parser.add_argument('-gamma', type=int, default=5000, help='gamma penalty constant: each node in 1 part')
-  parser.add_argument('-label', default='qgp_hybrid', help='label for run')
-  parser.add_argument('-qsize', type=int, default=64, help='QPU sub-qubo size')
+  parser.add_argument('-label', default='q2gp_hybrid', help='label for run')
+  parser.add_argument('-qsize', type=int, default=64, help='qbsolv sub-qubo size')
 
   args = parser.parse_args()
  
   print('number parts = ', args.nparts)
   print('plot flag = ', args.pflag)
   print('mtx file = ', args.ifile)
-  print('ftype = ', args.ftype)
+  print('file type = ', args.ftype)
   print('beta = ', args.beta)
   print('alpha = ', args.alpha)
   print('gamma = ', args.gamma)
@@ -79,7 +79,7 @@ if __name__== '__main__':
   threshold = 0.0
   graph = GFU.createGraph(ftype, ifilename, threshold)
 
-  num_blocks = num_parts 
+  num_parts = 2
   num_nodes = nx.number_of_nodes(graph)
   num_edges = nx.number_of_edges(graph)
   print("\n\t Partitioning into %d parts...\n" %num_parts)
@@ -88,45 +88,44 @@ if __name__== '__main__':
 
   # Collect results to dictionary
   result = {}
-  result['alg'] = 'LANL_GP'
+  result['alg'] = 'LANL_2GP'
   result['num_parts'] = num_parts
   result['dataset'] = ifilename
   result['nodes'] = num_nodes
   result['edges'] = num_edges
-  result['size'] = num_nodes * num_parts
-  result['solver'] = 'DWAVE_Hybrid'
+  result['size'] = num_nodes
+  result['solver'] = 'DWAVE_HYBRID'
   result['subqubo_size'] = qsize
-  result['alpha'] = alpha0
-  result['beta'] = beta0
-  result['gamma'] = gamma0
 
   # Set penalty constants
-  beta, alpha, gamma, GAMMA  = QGP.set_penalty_constant(num_nodes, num_blocks, beta0, alpha0, gamma0)
+  alpha = alpha0
+  beta = beta0
+  gamma = gamma0
 
-  # Create and write QUBO matrix to file
+  # Create QUBO matrix 
   laplacian = nx.laplacian_matrix(graph)
-  Q = QGP.makeQubo(laplacian, alpha, beta, gamma, GAMMA, graph, num_nodes, num_parts, num_blocks)
+  Q = QGP.makeQubo(laplacian, alpha, beta, gamma, graph, num_nodes, num_parts)
   print('QUBO created')
   print(flush=True)
   
-  # Run k-partitioning with Hybrid/D-Wave using ocean
+  # Run 2-partitioning with D-Wave hybrid workflow using ocean
   ss = QGP.partitionHybrid(Q, num_parts, qsize, run_label, result)
-  print('Partitioning run')
+  print('Partitioning done')
   print(flush=True)
 
   # Process solution
-  part_number = QGP.process_solution(ss, graph, num_blocks, num_nodes, num_parts, result)
-  print('Post-processed')
+  part_number,cdet = QGP.process_solution(ss, graph, num_nodes, num_parts, result)
+  print('Postprocessing done')
   print(flush=True)
 
   GFU.write_partfile(graph, part_number, num_nodes, num_parts)
 
   # Get results and compare to other tools (if available)
-  min_cut = QGP.compare_with_metis_and_kahip(graph, part_number, num_nodes, num_parts, num_blocks, result)
+  min_cut = QGP.compare_with_metis_and_kahip(graph, part_number, num_nodes, num_parts, result)
   result['min_cut_metric'] = min_cut
 
   GFU.write_resultFile(result)
 
-  # Show plot of clusters if requested
+  # Show plot of parts if requested
   if pflag == 1:
     GFU.show_partitions(graph, part_number)
