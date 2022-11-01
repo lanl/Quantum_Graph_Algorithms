@@ -261,8 +261,6 @@ def read_mi_file(G, mfile, threshold):
     if n0 != n1:
       if abs(eweight) > threshold:
         G.add_edge(n0,n1,weight=eweight)
-    #else:
-    #  G.add_node(n0)
 
   gfile.close()
 
@@ -297,8 +295,6 @@ def read_graph_file(G, prot_file, threshold):
     if n0 != n1:
       if abs(eweight) > threshold:
         G.add_edge(n0,n1,weight=eweight)
-    #else:
-    #  G.add_node(n0)
 
   gfile.close()
 
@@ -332,8 +328,6 @@ def read_graph_file_zerobased(G, prot_file, threshold):
     if n0 != n1:
       if abs(eweight) > threshold:
         G.add_edge(n0,n1,weight=eweight)
-    #else:
-    #  G.add_node(n0)
 
   gfile.close()
 
@@ -389,19 +383,13 @@ def read_graph_file_unweighted(G, data_file):
     G.add_node(i)
 
   # Add all edges
-  threshold = 0.0
   for i in range(nedges):
     line = gfile.readline()
     x = line.split()
     n0 = int(x[0]) - 1
     n1 = int(x[1]) - 1
-    eweight = float(x[2])
     if n0 != n1:
-      if abs(eweight) > threshold:
-        #G.add_edge(n0,n1,weight=float(1.0))
-        G.add_edge(n0,n1)
-    #else:
-    #  G.add_node(n0)
+      G.add_edge(n0,n1)
 
   gfile.close()
 
@@ -455,15 +443,20 @@ def generateGraph(ftype, ifilename, threshold):
     graph = nx.Graph()
     graph = read_graph_file(graph, ifilename, threshold)
 
-  # Positive weighted mtx
-  elif ftype =='zmtx':
+  # Unweighted or no weights mtx
+  elif ftype =='umtx':
     graph = nx.Graph()
-    graph = read_graph_file_posweighted(graph, ifilename, threshold)
+    graph = read_graph_file_unweighted(graph, ifilename)
 
-  #  No weights mtx
-  elif ftype =='nmtx':
+  # Zero-based
+  elif ftype == '0mtx':
     graph = nx.Graph()
-    graph = read_graph_file_noweights(graph, ifilename)
+    graph = read_graph_file_zerobased(graph, ifilename, threshold)
+
+  # mutual information
+  elif ftype == 'mi':
+    graph = nx.Graph()
+    graph = read_mi_file(graph, ifilename, threshold)
 
   # gml
   elif ftype == 'gml':
@@ -476,21 +469,6 @@ def generateGraph(ftype, ifilename, threshold):
   # net
   elif ftype == 'net':
     graph = read_net_file(ifilename)
-
-  # mutual information
-  elif ftype == 'mi':
-    graph = nx.Graph()
-    graph = read_mi_file(graph, ifilename, threshold)
-
-  # Unweighted
-  elif ftype =='umtx':
-    graph = nx.Graph()
-    graph = read_graph_file_unweighted(graph, ifilename)
-
-  # Zero-based
-  elif ftype == '0mtx':
-    graph = nx.Graph()
-    graph = read_graph_file_zerobased(graph, ifilename, threshold)
 
   return graph
 

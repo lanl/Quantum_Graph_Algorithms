@@ -47,7 +47,7 @@ if __name__== '__main__':
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
   parser.add_argument('-pflag', type=int, default=0, help='plot flag, 0-no 1-yes')
   parser.add_argument('-ifile', help='input filename')
-  parser.add_argument('-ftype', default='mtx', help='input file type (mtx, umtx, zmtx, gml, konect, net, mi')
+  parser.add_argument('-ftype', default='umtx', help='input file type (mtx, umtx, 0mtx, mi, gml, konect, net')
   parser.add_argument('-beta', type=int, default=1, help='beta penalty constant: minimize edge cut')
   parser.add_argument('-gamma', type=int, default=-5, help='gamma penalty constant: each node in 1 part')
   parser.add_argument('-threshold', type=float, default=0.00, help='threshold value')
