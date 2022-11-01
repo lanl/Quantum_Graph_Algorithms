@@ -62,8 +62,6 @@ def read_graph_file(G, prot_file, threshold):
     if n0 != n1:
       if abs(eweight) > threshold:
         G.add_edge(n0,n1,weight=eweight)
-    #else:
-    #  G.add_node(n0)
 
   gfile.close()
 
@@ -89,19 +87,13 @@ def read_graph_file_unweighted(G, data_file):
     G.add_node(i)
 
   # Add all edges
-  threshold = 0.0
   for i in range(nedges):
     line = gfile.readline()
     x = line.split()
     n0 = int(x[0]) - 1
     n1 = int(x[1]) - 1
-    eweight = float(x[2])
     if n0 != n1:
-      if abs(eweight) > threshold:
-        #G.add_edge(n0,n1,weight=float(1.0))
-        G.add_edge(n0,n1)
-    #else:
-    #  G.add_node(n0)
+      G.add_edge(n0,n1)
 
   gfile.close()
 
@@ -135,8 +127,6 @@ def read_mi_file(G, mfile, threshold):
     if n0 != n1:
       if abs(eweight) > threshold:
         G.add_edge(n0,n1,weight=eweight)
-    #else:
-    #  G.add_node(n0)
 
   gfile.close()
 
@@ -165,8 +155,6 @@ def read_graph_file_noweights(G, prot_file):
     n1 = int(x[1]) - 1
     if n0 != n1:
       G.add_edge(n0,n1)
-    else:
-      G.add_node(n0)
 
   gfile.close()
 
@@ -185,18 +173,18 @@ def read_graph_file_zerobased(G, prot_file):
   nedges = int(x[2])
   print("graph ", n, " nodes ", nedges, " elements")
 
+  # Create nodes
   for i in range(n):
     G.add_node(i)
 
-  for i in range(0, nedges):
+  # Add edges
+  for i in range(nedges):
     line = gfile.readline()
     x = line.split()
     n0 = int(x[0])
     n1 = int(x[1])
     if n0 != n1:
       G.add_edge(n0,n1)
-    #else:
-    #  G.add_node(n0)
 
   gfile.close()
 
@@ -217,13 +205,9 @@ def createGraph(ftype, ifile, threshold):
   elif ftype == '0mtx':
     graph = read_graph_file_zerobased(graph, ifile)
 
-  # Unweighted mtx
+  # Unweighted mtx or no weights
   elif ftype =='umtx':
     graph = read_graph_file_unweighted(graph, ifile)
-
-  # No weights
-  elif ftype == 'nmtx':
-     graph = read_graph_file_noweights(graph, ifile)
 
   # mutual information
   elif ftype == 'mi':

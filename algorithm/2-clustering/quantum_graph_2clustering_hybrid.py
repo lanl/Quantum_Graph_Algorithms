@@ -45,7 +45,7 @@ if __name__== '__main__':
 
   parser = argparse.ArgumentParser(description='Quantum Community Detection 2-clustering - hybrid workflow')
   parser.add_argument('-ifile', help='input filename')
-  parser.add_argument('-ftype', default='mtx', help='input file type (mtx, umtx, nmtx, mi)')
+  parser.add_argument('-ftype', default='umtx', help='input file type (mtx, umtx, 0mtx, mi)')
   parser.add_argument('-pflag', type=int, default=0, help='plot flag, 0-no 1-yes')
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
   parser.add_argument('-label', default='q2cd_hybrid', help='label for run')
