@@ -34,6 +34,7 @@ if __name__== '__main__':
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
   parser.add_argument('-pflag', type =int, default=0, help='0 - no plot, 1 - show plot')
   parser.add_argument('-ifile', help='input filename in mtx format')
+  parser.add_argument('-ftype', default='umtx', help='file type: mtx, umtx, 0mtx')
   parser.add_argument('-beta', type=int, default=1, help='beta penalty constant: minimize edge cut')
   parser.add_argument('-alpha', type=int, default=1000, help='alpha penalty constant: balancing')
   parser.add_argument('-gamma', type=int, default=5000, help='gamma penalty constant: each node in 1 part')
@@ -43,6 +44,7 @@ if __name__== '__main__':
   print('number parts = ', args.nparts)
   print('plot flag = ', args.pflag)
   print('mtx file = ', args.ifile)
+  print('file type = ', args.ftype)
   print('beta = ', args.beta)
   print('alpha = ', args.alpha)
   print('gamma = ', args.gamma)
@@ -51,6 +53,7 @@ if __name__== '__main__':
   num_parts = args.nparts
   pflag = args.pflag
   ifilename = args.ifile
+  ftype = args.ftype
   beta0 = args.beta
   alpha0 = args.alpha
   gamma0 = args.gamma
@@ -61,8 +64,8 @@ if __name__== '__main__':
   ###
 
   # Read in graph from mtx file
-  graph = nx.Graph() 
-  graph = GFU.read_graph_file(graph, ifilename)
+  threshold = 0.0
+  graph = GFU.createGraph(ftype, ifilename, threshold)
 
   num_blocks = num_parts 
   num_nodes = nx.number_of_nodes(graph)
