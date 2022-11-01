@@ -40,7 +40,7 @@ if __name__== '__main__':
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
   parser.add_argument('-pflag', type =int, default=0, help='0 - no plot, 1 - show plot')
   parser.add_argument('-ifile', help='input filename in mtx format')
-  parser.add_argument('-ftype', default='mtx', help='file type: mtx, 0mtx, umtx')
+  parser.add_argument('-ftype', default='umtx', help='file type: mtx, 0mtx, umtx')
   parser.add_argument('-beta', type=int, default=1, help='beta penalty constant: minimize edge cut')
   parser.add_argument('-alpha', type=int, default=1000, help='alpha penalty constant: balancing')
   parser.add_argument('-gamma', type=int, default=5000, help='gamma penalty constant: each node in 1 part')
