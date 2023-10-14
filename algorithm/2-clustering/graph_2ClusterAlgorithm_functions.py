@@ -3,7 +3,7 @@ import numpy.linalg as la
 import networkx as nx
 
 import neal
-from dwave_qbsolv import QBSolv
+#from dwave_qbsolv import QBSolv
 from dwave.system.samplers import DWaveSampler, DWaveCliqueSampler
 from dwave.system.composites import EmbeddingComposite, FixedEmbeddingComposite
 from dimod.reference.samplers import ExactSolver
@@ -206,12 +206,12 @@ def getEmbedding(qsize):
   return embedding
 
 
-def runDwave(Q, embedding, run_label, result):
+def runDwave(Q, embedding, run_label, run_profile, result):
 
   sampler  = FixedEmbeddingComposite(DWaveSampler(), embedding)
 
   t0 = dt.datetime.now()
-  response = QBSolv().sample_qubo(Q, solver=sampler, label=run_label)
+  #response = QBSolv().sample_qubo(Q, solver=sampler, label=run_label)
   wtime = dt.datetime.now() - t0
   print('\n wall clock time = ', wtime)
   result['wall_clock_time'] = wtime
@@ -240,10 +240,10 @@ def runDwave(Q, embedding, run_label, result):
   return ss
  
   
-def runDwaveDirect(Q, run_label, result):
+def runDwaveDirect(Q, run_label, run_profile, result):
 
   # Use D-Wave directly
-  sampler = DWaveCliqueSampler()
+  sampler = DWaveCliqueSampler(profile=run_profile)
   chain_strength = partial(uniform_torque_compensation, prefactor=2)
   num_reads=1000
 
@@ -285,14 +285,18 @@ def process_solution(ss, num_nodes):
 
   # Determine sizes of 2 clusters
   cc = np.zeros([num_nodes])
+  cc2 = {}
   c0 = 0
   c1 = 0
   for i in range(num_nodes):
     if ss[0,i] == 0:
       c0 = c0 + 1
+      cc[i] = 0
+      cc2[i] = 0
     else:
       c1 = c1 + 1
       cc[i] = 1
+      cc2[i] = 1
 
   print('\n2 clusters of size:', c0, c1)
 
@@ -307,7 +311,7 @@ def process_solution(ss, num_nodes):
     print('cldet ', i, cldet[i])
   print(flush=True)
 
-  return cc, cldet
+  return cc2, cldet
 
 
 def runSA(Q, num_nodes, result):
@@ -345,7 +349,7 @@ def runSA(Q, num_nodes, result):
   return ss
 
 
-def runDwaveHybrid(Q, num_nodes, sub_qsize, run_label, result):
+def runDwaveHybrid(Q, num_nodes, sub_qsize, run_label, run_profile, result):
 
   bqm = dimod.BQM.from_qubo(Q)
 
@@ -360,7 +364,7 @@ def runDwaveHybrid(Q, num_nodes, sub_qsize, run_label, result):
     hybrid.InterruptableTabuSampler(),
     #hybrid.EnergyImpactDecomposer(size=sub_qsize, rolling=True, rolling_history=0.15)
     hybrid.EnergyImpactDecomposer(size=sub_qsize, rolling=True, rolling_history=1.00)
-    #| hybrid.QPUSubproblemAutoEmbeddingSampler(num_reads=100, sampling_params=rparams)
+    #| hybrid.QPUSubproblemAutoEmbeddingSampler(num_reads=100, profile=run_profile, sampling_params=rparams)
     | QPUSubSamTime
     | hybrid.SplatComposer()
   ) | hybrid.MergeSamples(aggregate=True)
@@ -430,13 +434,13 @@ def lowEnergy(cldet, H):
   return clind
 
 
-def cluster(B, embedding, run_label, result):
+def cluster(B, embedding, run_label, run_profile, result):
 
   # Create the qubo from the modularity matrix
   Q = makeQubo(B)
 
   # Cluster into 2 parts using DWave
-  cldet = runDwave(Q, embedding, run_label, result)
+  cldet = runDwave(Q, embedding, run_label, run_profile, result)
 
   # Determine which of the 2 clusters has the lower energy
   #clind = lowEnergy(cldet, H)
@@ -462,13 +466,13 @@ def clusterSA(B, num_nodes, result):
   return cldet
 
 
-def clusterHybrid(B, num_nodes, qsize, run_label, result):
+def clusterHybrid(B, num_nodes, qsize, run_label, run_profile, result):
 
   # Create the qubo from the modularity matrix
   Q = makeQubo(B)
 
   # Cluster into 2 parts using DWave
-  cldet = runDwaveHybrid(Q, num_nodes, qsize, run_label, result)
+  cldet = runDwaveHybrid(Q, num_nodes, qsize, run_label, run_profile, result)
 
   # Determine which of the 2 clusters has the lower energy
   #clind = lowEnergy(cldet, H)
@@ -476,13 +480,13 @@ def clusterHybrid(B, num_nodes, qsize, run_label, result):
   return cldet 
 
 
-def clusterDirect(B, run_label, result):
+def clusterDirect(B, run_label, run_profile, result):
 
   # Create the qubo from the modularity matrix
   Q = makeQubo(B)
 
   # Cluster into 2 parts using DWave
-  cldet = runDwaveDirect(Q, run_label, result)
+  cldet = runDwaveDirect(Q, run_label, run_profile, result)
 
   # Determine which of the 2 clusters has the lower energy
   #clind = lowEnergy(cldet, H)

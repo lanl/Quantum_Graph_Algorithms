@@ -2,7 +2,7 @@ import numpy as np
 import numpy.linalg as la
 import networkx as nx
 
-from dwave_qbsolv import QBSolv
+#from dwave_qbsolv import QBSolv
 from dwave.system.samplers import DWaveSampler
 from dwave.system.composites import EmbeddingComposite, FixedEmbeddingComposite
 from dimod.reference.samplers import ExactSolver

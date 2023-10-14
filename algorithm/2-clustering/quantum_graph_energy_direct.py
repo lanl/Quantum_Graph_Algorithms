@@ -2,6 +2,7 @@ import numpy as np
 import numpy.linalg as la
 import networkx as nx
 
+#from dwave_qbsolv import QBSolv
 from dwave.system.samplers import DWaveSampler
 from dwave.system.composites import EmbeddingComposite, FixedEmbeddingComposite
 from dimod.reference.samplers import ExactSolver
@@ -42,14 +43,18 @@ if __name__== '__main__':
 
   urllib3.disable_warnings()
 
-  parser = argparse.ArgumentParser(description='Quantum Community Detection 2-clustering - hybrid workflow')
+  parser = argparse.ArgumentParser(description='Quantum Graph Energy - D-Wave Direct')
   parser.add_argument('-ifile', help='input filename')
   parser.add_argument('-ftype', default='umtx', help='input file type (mtx, umtx, 0mtx, mi)')
   parser.add_argument('-pflag', type=int, default=0, help='plot flag, 0-no 1-yes')
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
-  parser.add_argument('-label', default='q2cd_hybrid', help='label for run')
-  parser.add_argument('-qsize', type=int, default=64, help='hybrid sub-qubo size')
+  parser.add_argument('-label', default='q2cd_direct', help='label for run')
   parser.add_argument('-myprofile', default='', help='D-Wave profile for run')
+  parser.add_argument('-nv', type=int, default=0, help='number of vacancies')
+  parser.add_argument('-p', type=float, default=6.0, help='value of P')
+
+  # p = 6.0 works for nv =  0,1,2,3,4,5
+  # the vacancy nodes are connected
 
   args = parser.parse_args()
 
@@ -58,21 +63,23 @@ if __name__== '__main__':
   print('plot flag = ', args.pflag)
   print('number parts = ', args.nparts)
   print('label = ', args.label)
-  print('qsize = ', args.qsize)
-  print('myprofile = ', args.myprofile)
+  print('myprofile= ', args.myprofile)
+  print('nv = ', args.nv)
+  print('p = ', args.p)
 
   ifile = args.ifile
   ftype = args.ftype
   pflag = args.pflag
   nparts = args.nparts
   run_label = args.label
-  qsize = args.qsize
   run_profile = args.myprofile
+  nv = args.nv
+  p = args.p
  
   # Read in file as graph
   threshold = 0.0
-  graph = GFU.createGraph(ftype, ifile, threshold) 
-  
+  graph = GFU.createGraph(ftype, ifile, threshold)
+
   num_nodes = nx.number_of_nodes(graph)
   num_edges = nx.number_of_edges(graph)
   print ("\n\t community detection: up to %d communities...\n" %nparts)
@@ -86,32 +93,32 @@ if __name__== '__main__':
   result['nodes'] = num_nodes
   result['edges'] = num_edges
   result['size'] = num_nodes
-  result['solver'] = 'DWAVE_HYBRID'
-  result['subqubo_size'] = qsize
+  result['solver'] = 'DWAVE_DIRECT'
+  result['p'] = p
+  result['nv'] = nv
 
   # Create Adjacency matrix A
   A = nx.adjacency_matrix(graph)
   print ('\nAdjacency matrix:\n', A.todense())
-
-  # Calculate Modularity matrix B
-  mtotal,B = QCD.buildMod(A, threshold)
-  print('\nModularity matrix:\n', B)
+  
+  # Create QUBO
+  C = np.zeros([num_nodes,num_nodes])
+  U = np.zeros([num_nodes,num_nodes])
+  for i in range(num_nodes):
+    for j in range(num_nodes):
+      if i != j:
+        U[i,j] = 1
+  C = (1-2*(num_nodes - nv)) * np.identity(num_nodes) + U
+  print('\nC = ', C)
+  Q = A - p * C 
+  print('\nQ = ', Q)
 
   # Cluster into 2 parts
-  ss = QCD.clusterHybrid(B, num_nodes, qsize, run_label, run_profile,  result)
+  ss = QCD.clusterDirect(Q, run_label, run_profile, result)
 
-  # Process solution
+  # Process results
   part_number,cdet = QCD.process_solution(ss, num_nodes)
 
-  # Calculate modularity meetric
-  mmetric = QCD.calcModularityMetric(mtotal, B, part_number)
-  print('\nmodularity metric = ', mmetric)
-  result['modularity_metric'] = mmetric
-  mcut = QCD.calc_cut(graph, part_number)
-  print('\nMin cut = ', mcut)
-  result['minimum_cut'] = mcut
-  result['num_clusters_found'] = nparts
-  print(flush=True)
 
   GFU.write_resultFile(result)
 

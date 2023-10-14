@@ -2,7 +2,7 @@ import numpy as np
 import numpy.linalg as la
 import networkx as nx
 
-from dwave_qbsolv import QBSolv
+#from dwave_qbsolv import QBSolv
 from dwave.system.samplers import DWaveSampler
 from dwave.system.composites import EmbeddingComposite, FixedEmbeddingComposite
 from dimod.reference.samplers import ExactSolver
@@ -49,6 +49,7 @@ if __name__== '__main__':
   parser.add_argument('-pflag', type=int, default=0, help='plot flag, 0-no 1-yes')
   parser.add_argument('-nparts', type=int, default=2, help='number of parts')
   parser.add_argument('-label', default='q2cd_direct', help='label for run')
+  parser.add_argument('-myprofile', default='', help='profile name for run')
 
   args = parser.parse_args()
 
@@ -57,12 +58,14 @@ if __name__== '__main__':
   print('plot flag = ', args.pflag)
   print('number parts = ', args.nparts)
   print('label = ', args.label)
+  print('myprofile = ', args.myprofile)
 
   ifile = args.ifile
   ftype = args.ftype
   pflag = args.pflag
   nparts = args.nparts
   run_label = args.label
+  run_profile = args.myprofile
  
   # Read in file as graph
   threshold = 0.0
@@ -92,7 +95,7 @@ if __name__== '__main__':
   print('\nModularity matrix:\n', B)
 
   # Cluster into 2 parts
-  ss = QCD.clusterDirect(B, run_label, result)
+  ss = QCD.clusterDirect(B, run_label, run_profile, result)
 
   # Process results
   part_number,cdet = QCD.process_solution(ss, num_nodes)
@@ -111,6 +114,6 @@ if __name__== '__main__':
 
   # Show plot of parts if requested
   if pflag == 1:
-    GFU.showClusters(graph, part_number)
+    GFU.showClusters(part_number, graph)
 
   exit(0)
