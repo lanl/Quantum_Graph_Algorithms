@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import re, os, sys
 
 import neal
-from dwave_qbsolv import QBSolv
 from dwave.system.samplers import DWaveSampler, DWaveCliqueSampler
 from dwave.system.composites import FixedEmbeddingComposite, EmbeddingComposite
 import dimod
@@ -57,7 +56,6 @@ def makeQubo(laplacian, alpha, beta, gamma, graph, num_nodes, num_parts):
         entry = beta * g[i] - alpha * (n - 1)
         Q[i,i] = entry
       else:
-        #entry = alpha
         if A[i,j] > 0:
           entry = alpha - beta
         else:
@@ -82,8 +80,8 @@ def compute_cut(graph, part_number, num_nodes, num_parts):
 def write_metis_graph_file(graph):
     
   gfile = open("graph.txt", "w")
-  n = str(nx.nx.number_of_nodes(graph))
-  m = str(nx.nx.number_of_edges(graph))
+  n = str(nx.number_of_nodes(graph))
+  m = str(nx.number_of_edges(graph))
   out = " ".join([n, m, "\n"])
   gfile.write(out)
   #for u in nx.nodes_iter(graph):
@@ -208,18 +206,18 @@ def getEmbedding(qsize):
   return embedding
 
 
-def runDwave(Q, num_nodes, k, embedding, sub_qsize, run_label, result):
+def runDwave(Q, num_nodes, k, embedding, sub_qsize, run_label, run_profile, result):
 
   # Using D-Wave/qbsolv
   # Needed when greater than number of nodes/variables that can fit on the D-Wave
-  sampler  = FixedEmbeddingComposite(DWaveSampler(), embedding)
-  #sampler  = DWaveCliqueSampler(annealing_time=10)
-  #sampler  = DWaveCliqueSampler()
+  sampler  = FixedEmbeddingComposite(DWaveSampler(profile=run_profile), embedding)
+  #sampler  = DWaveCliqueSampler(annealing_time=10, profile=run_profile)
+  #sampler  = DWaveCliqueSampler(profile=run_profile)
 
   rval = random.randint(1,10000)
   t0 = dt.datetime.now()
-  solution_qbs = QBSolv().sample_qubo(Q, solver=sampler, seed=rval,
-                           label=run_label)
+  #solution_qbs = QBSolv().sample_qubo(Q, solver=sampler, seed=rval,
+  #                         label=run_label)
   while solution_qbs.done() == False:
     xx = 0
   wtime = dt.datetime.now() - t0
@@ -256,7 +254,7 @@ def runDwave(Q, num_nodes, k, embedding, sub_qsize, run_label, result):
 
   return ss
 
-def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label, result):
+def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label, run_profile, result):
 
   bqm = dimod.BQM.from_qubo(Q)
 
@@ -311,7 +309,7 @@ def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label, result):
   return ss
 
 
-def runDwaveHybrid2(Q, num_nodes, k, sub_qsize, run_label, result):
+def runDwaveHybrid2(Q, num_nodes, k, sub_qsize, run_label, run_profile, result):
 
   bqm = dimod.BQM.from_qubo(Q)
 
@@ -321,7 +319,7 @@ def runDwaveHybrid2(Q, num_nodes, k, sub_qsize, run_label, result):
 
   # define the workflow
   t0 = dt.datetime.now()
-  solution = hybrid.KerberosSampler().sample(bqm, max_iter=10, convergence=3)
+  solution = hybrid.KerberosSampler(profile=run_profile).sample(bqm, max_iter=10, convergence=3)
   wtime = dt.datetime.now() - t0
 
   result['wall_clock_time'] = wtime
@@ -351,13 +349,13 @@ def runDwaveHybrid2(Q, num_nodes, k, sub_qsize, run_label, result):
 
   return ss
 
-def runDwaveDirect(Q, run_label, result):
+def runDwaveDirect(Q, run_label, run_profile, result):
 
   # Use D-Wave directly
   atime=20
-  #sampler = DWaveCliqueSampler(annealing_time=atime)
-  sampler = DWaveCliqueSampler()
-  #sampler = EmbeddingComposite(DWaveSampler())
+  #sampler = DWaveCliqueSampler(profile=run_profile, annealing_time=atime)
+  sampler = DWaveCliqueSampler(profile=run_profile)
+  #sampler = EmbeddingComposite(DWaveSampler(profile=run_profile))
   chain_strength = partial(uniform_torque_compensation, prefactor=2)
   #chain_strength = partial(uniform_torque_compensation, prefactor=1)
   #chain_strength = partial(uniform_torque_compensation, prefactor=3)
@@ -440,36 +438,36 @@ def runSA(Q, num_nodes, result):
   return ss
 
 
-def partition(Q, k, embedding, sub_qsize, run_label, result):
+def partition(Q, k, embedding, sub_qsize, run_label, run_profile, result):
 
   # Start with Q
   qsize = Q.shape[1]
   print('\n Q size = ', qsize)
 
   # Partition into 2 parts using DWave ocean/qbsolv
-  ss = runDwave(Q, qsize, k, embedding, sub_qsize, run_label, result)
+  ss = runDwave(Q, qsize, k, embedding, sub_qsize, run_label, run_profile, result)
 
   return ss
 
-def partitionHybrid(Q, k, sub_qsize, run_label, result):
+def partitionHybrid(Q, k, sub_qsize, run_label, run_profile, result):
 
   # Start with Q
   qsize = Q.shape[1]
   print('\n Q size = ', qsize)
 
   # Partition into 2 parts using Hybrid/DWave ocean
-  ss = runDwaveHybrid(Q, qsize, k, sub_qsize, run_label, result)
+  ss = runDwaveHybrid(Q, qsize, k, sub_qsize, run_label, run_profile, result)
 
   return ss
 
-def partitionDirect(Q, run_label, result):
+def partitionDirect(Q, run_label, run_profile, result):
 
   # Start with Q
   qsize = Q.shape[1]
   print('\n Q size = ', qsize)
 
   # Partition into 2 parts directly on the D-Wave
-  ss = runDwaveDirect(Q, run_label, result)
+  ss = runDwaveDirect(Q, run_label, run_profile, result)
 
   return ss
 

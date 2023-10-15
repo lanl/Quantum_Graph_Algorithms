@@ -3,12 +3,14 @@
 import matplotlib.pyplot as plt
 import re, os, sys
 
-from dwave_qbsolv import QBSolv
+from dwave.system import LeapHybridSampler
 from dwave.system.samplers import DWaveSampler, DWaveCliqueSampler
-from dwave.system.composites import FixedEmbeddingComposite
+from dwave.system.composites import EmbeddingComposite
 import dimod
 import hybrid
 import minorminer
+from functools import partial
+from dwave.embedding.chain_strength import uniform_torque_compensation
 
 import numpy as np
 import networkx as nx
@@ -289,8 +291,8 @@ def compute_cut_qbsolv(graph, bit_string, num_nodes, num_parts, num_blocks, resu
 def write_metis_graph_file(graph):
     
   gfile = open("graph.txt", "w")
-  n = str(nx.nx.number_of_nodes(graph))
-  m = str(nx.nx.number_of_edges(graph))
+  n = str(nx.number_of_nodes(graph))
+  m = str(nx.number_of_edges(graph))
   out = " ".join([n, m, "\n"])
   gfile.write(out)
   #for u in nx.nodes_iter(graph):
@@ -401,14 +403,6 @@ def compare_with_metis_and_kahip_qbsolv(graph, bit_string, num_nodes, num_parts,
   return part_number
 
 
-def run_qbsolv():
-
-  rval = random.randint(1,1000)
-  estring = "qbsolv -r " + str(rval) + " -i graph.qubo -o dwave_output.out"
-  print('\n', estring)
-  os.system(estring)
-
-
 def process_solution_qbsolv(graph, num_blocks, num_nodes, num_parts):
 
   bit_string =  get_qubo_solution()
@@ -418,7 +412,6 @@ def process_solution_qbsolv(graph, num_blocks, num_nodes, num_parts):
   return bit_string
 
 def process_solution(ss, graph, num_blocks, num_nodes, num_parts, result):
-#def process_solution(ii, ss, graph, num_blocks, num_nodes, num_parts, result):
 
   qsol = {}
   for i in range(num_blocks*num_nodes):
@@ -447,27 +440,33 @@ def process_solution(ss, graph, num_blocks, num_nodes, num_parts, result):
 
   return part_number
 
-def getEmbedding(qsize):
+def getEmbedding(qsize, run_profile):
 
-  subqubo_size = qsize 
-  qsystem = DWaveSampler()
-  kqsize = nx.complete_graph(qsize).edges()
-  embedding = minorminer.find_embedding(kqsize, qsystem.edgelist)
+  ksize = qsize
+  qsystem = DWaveSampler(profile=run_profile)
+  ksub = nx.complete_graph(ksize).edges()
+  embedding = minorminer.find_embedding(ksub, qsystem.edgelist)
   print('\nembedding done')
 
   return embedding
 
 
-def runDwave(Q, num_nodes, k, embedding, sub_qsize, run_label, result):
+#def runDwave(Q, num_nodes, k, embedding, sub_qsize, run_label, run_profile, result):
+def runDwave(Q, num_nodes, k, run_label, run_profile, result):
 
-  # Using D-Wave/qbsolv
-  # Needed when greater than number of nodes/variables that can fit on the D-Wave
-  sampler  = FixedEmbeddingComposite(DWaveSampler(), embedding)
+  # Using D-Wave
+  #sampler = DWaveCliqueSampler(profile=run_profile, annealing_time=15)
+  sampler = DWaveCliqueSampler(profile=run_profile)
+  chain_strength = partial(uniform_torque_compensation, prefactor=2)
+  num_reads=1000
 
-  rval = random.randint(1,10000)
+  #sampler  = EmbeddingComposite(DWaveSampler(profile=run_profile), embedding)
+  #chain_strength = partial(uniform_torque_compensation, prefactor=2)
+  #num_reads=1000
+
+  # Run directly on the Dwave
   t0 = dt.datetime.now()
-  solution = QBSolv().sample_qubo(Q, solver=sampler, seed=rval, solver_limit=sub_qsize,
-                           label=run_label)
+  solution = sampler.sample_qubo(Q, num_reads=num_reads, chain_strength=chain_strength, label=run_label)
   wtime = dt.datetime.now() - t0
   result['wall_clock_time'] = wtime
 
@@ -475,7 +474,7 @@ def runDwave(Q, num_nodes, k, embedding, sub_qsize, run_label, result):
   first = True
   ndiff = 0
   total_solns = 0
-  for sample, energy, num_occurrences in solution.data():
+  for sample, energy, num_occurrences, other in solution.data():
     #print(sample, "Energy: ", energy, "Occurrences: ", num_occurrences)
     if first == True:
       result['energy'] = energy
@@ -486,16 +485,14 @@ def runDwave(Q, num_nodes, k, embedding, sub_qsize, run_label, result):
   result['num_diff_solns'] = ndiff
   result['total_solns'] = total_solns
 
-  print('\n qbsolv response:')
   print(solution)
   ss = solution.samples()
-  #print("\n qbsolv samples=" + str(list(solution.samples())))
   #print('\nss = ', ss)
   print(flush=True)
 
   return ss
 
-def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label, result):
+def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label, run_profile, result):
 
   bqm = dimod.BQM.from_qubo(Q)
 
@@ -548,24 +545,84 @@ def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label, result):
 
   return ss
 
-def partition(Q, k, embedding, sub_qsize, run_label, result):
+def runDwaveLeapHybrid(Q, num_nodes, k, run_label, run_profile, tlimit, result):
+
+  bqm = dimod.BQM.from_qubo(Q)
+
+  rparams = {}
+  rparams['label'] = run_label
+
+  sampler = LeapHybridSampler(profile=run_profile)
+  # run the workflow
+  t0 = dt.datetime.now()
+  if tlimit > 0:
+    solution = sampler.sample(bqm, time_limit=tlimit)
+  else:
+    solution = sampler.sample(bqm)
+  wtime = dt.datetime.now() - t0
+
+  result['wall_clock_time'] = wtime
+
+  # Collect QPU time and total time used
+  result['run_time'] = solution.info['run_time'] 
+  result['qpu_time'] = solution.info['qpu_access_time']
+
+  # Collect first energy and num_occ, num diff solutions, and total solutions
+  first = True
+  ndiff = 0
+  total_solns = 0
+  for sample, energy, num_occurrences in solution.data():
+    #print(sample, "Energy: ", energy, "Occurrences: ", num_occurrences)
+    if first == True:
+      result['energy'] = energy
+      result['num_occ'] = num_occurrences
+      first = False
+    ndiff += 1
+    total_solns += num_occurrences
+  result['num_diff_solns'] = ndiff
+  result['total_solns'] = total_solns
+
+  print(solution)
+  xx = solution.samples()
+  ss = np.zeros([1,num_nodes])
+  for i in range(num_nodes):
+    ss[0,i] = xx[0,i]
+
+  print('\nss = ', ss)
+
+  return ss 
+
+#def partition(Q, k, embedding, sub_qsize, run_label, run_profile, result):
+def partition(Q, k, run_label, run_profile, result):
 
   # Start with Q
   qsize = Q.shape[1]
   print('\n Q size = ', qsize)
 
-  # Partition into k parts using DWave ocean/qbsolv
-  ss = runDwave(Q, qsize, k, embedding, sub_qsize, run_label, result)
+  # Partition into k parts using DWave ocean
+  #ss = runDwave(Q, qsize, k, embedding, sub_qsize, run_label, run_profile,result)
+  ss = runDwave(Q, qsize, k, run_label, run_profile,result)
 
   return ss
 
-def partitionHybrid(Q, k, sub_qsize, run_label, result):
+def partitionHybrid(Q, k, sub_qsize, run_label, run_profile, result):
 
   # Start with Q
   qsize = Q.shape[1]
   print('\n Q size = ', qsize)
 
-  # Partition into k parts using Hybrid/DWave oceae
-  ss = runDwaveHybrid(Q, qsize, k, sub_qsize, run_label, result)
+  # Partition into k parts using Hybrid/DWave ocean
+  ss = runDwaveHybrid(Q, qsize, k, sub_qsize, run_label, run_profile, result)
 
   return ss
+
+def partitionLeapHybrid(Q, num_parts, run_label, run_profile, tlimit, result):
+ 
+  # Start with Q
+  qsize = Q.shape[1]
+  print('\n Q size = ', qsize)
+
+  # Partition into k parts using LeapHybrid/DWave ocean
+  ss = runDwaveLeapHybrid(Q, qsize, num_parts, run_label, run_profile, tlimit, result)
+
+  return ss 
