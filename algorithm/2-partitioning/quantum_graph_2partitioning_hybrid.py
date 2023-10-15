@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import re, os, sys
 import numpy as np
 
-from dwave_qbsolv import QBSolv
 from dwave.system.samplers import DWaveSampler
 from dwave.system.composites import FixedEmbeddingComposite
 import minorminer
@@ -45,7 +44,8 @@ if __name__== '__main__':
   parser.add_argument('-alpha', type=int, default=1000, help='alpha penalty constant: balancing')
   parser.add_argument('-gamma', type=int, default=5000, help='gamma penalty constant: each node in 1 part')
   parser.add_argument('-label', default='q2gp_hybrid', help='label for run')
-  parser.add_argument('-qsize', type=int, default=64, help='qbsolv sub-qubo size')
+  parser.add_argument('-myprofile', default='', help='D-Wave profile  for run')
+  parser.add_argument('-qsize', type=int, default=64, help='sub-qubo size')
 
   args = parser.parse_args()
  
@@ -57,6 +57,7 @@ if __name__== '__main__':
   print('alpha = ', args.alpha)
   print('gamma = ', args.gamma)
   print('label = ', args.label)
+  print('myprofile= ', args.myprofile)
   print('qsize = ', args.qsize)
   print('\n')
 
@@ -68,6 +69,7 @@ if __name__== '__main__':
   alpha0 = args.alpha
   gamma0 = args.gamma
   run_label = args.label
+  run_profile = args.myprofile
   qsize = args.qsize
 
   ####
@@ -109,7 +111,7 @@ if __name__== '__main__':
   print(flush=True)
   
   # Run 2-partitioning with D-Wave hybrid workflow using ocean
-  ss = QGP.partitionHybrid(Q, num_parts, qsize, run_label, result)
+  ss = QGP.partitionHybrid(Q, num_parts, qsize, run_label, run_profile, result)
   print('Partitioning done')
   print(flush=True)
 

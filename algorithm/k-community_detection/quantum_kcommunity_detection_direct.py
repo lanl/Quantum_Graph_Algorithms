@@ -52,6 +52,7 @@ if __name__== '__main__':
   parser.add_argument('-gamma', type=int, default=-5, help='gamma penalty constant: each node in 1 part')
   parser.add_argument('-threshold', type=float, default=0.00, help='threshold value')
   parser.add_argument('-label', default='qcd_direct', help='label for run')
+  parser.add_argument('-myprofile', default='qcd_direct', help='D-Wave profile  for run')
   parser.add_argument('-qsize', type=int, default=64, help='direct qubo size')
 
   args = parser.parse_args()
@@ -64,6 +65,7 @@ if __name__== '__main__':
   print('gamma = ', args.gamma)
   print('threshold = ', args.threshold)
   print('label = ', args.label)
+  print('myprofile = ', args.myprofile)
   print('qsize = ', args.qsize)
   print('\n')
 
@@ -75,6 +77,7 @@ if __name__== '__main__':
   gamma0 = args.gamma
   threshold = args.threshold
   run_label = args.label
+  run_profile = args.myprofile
   qsize = args.qsize
 
   ####
@@ -127,7 +130,7 @@ if __name__== '__main__':
   print(flush=True)
 
   # Run k-clustering with D-Wave using ocean
-  ss = QCD.clusterDirect(Q, num_parts, embedding, qsize, run_label, result)
+  ss = QCD.clusterDirect(Q, num_parts, embedding, qsize, run_label, run_profile, result)
 
   # Process solution
   part_number = QCD.process_solution(ss, graph, num_blocks, num_nodes, num_parts, result)
