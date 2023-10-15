@@ -71,7 +71,7 @@ class QPUTimeSubproblemAutoEmbeddingSampler(traits.SubproblemSampler, traits.SIS
     See :ref:`samplers-examples`.
     """
 
-    def __init__(self, num_reads=100, num_retries=0, qpu_sampler=None, sampling_params=None,
+    def __init__(self, num_reads=100, num_retries=0, qpu_sampler=None,  sampling_params=None,
                  auto_embedding_params=None, **runopts):
         super(QPUTimeSubproblemAutoEmbeddingSampler, self).__init__(**runopts)
 
@@ -82,7 +82,6 @@ class QPUTimeSubproblemAutoEmbeddingSampler(traits.SubproblemSampler, traits.SIS
 
         if qpu_sampler is None:
             qpu_sampler = DWaveSampler()
-
         if sampling_params is None:
             sampling_params = {}
         self.sampling_params = sampling_params
