@@ -3,7 +3,7 @@
 import matplotlib.pyplot as plt
 import re, os, sys
 
-#from dwave_qbsolv import QBSolv
+from dwave.system import LeapHybridSampler
 from dwave.system.samplers import DWaveSampler, DWaveCliqueSampler
 from dwave.system.composites import EmbeddingComposite, FixedEmbeddingComposite
 import dimod
@@ -519,6 +519,54 @@ def runDwaveHybrid(Q, num_nodes, k, sub_qsize, run_label, run_profile, result):
 
   return ss
 
+def runDwaveLeapHybrid(Q, num_nodes, k, run_label, run_profile, tlimit, result):
+
+  bqm = dimod.BQM.from_qubo(Q)
+
+  rparams = {}
+  rparams['label'] = run_label
+
+  sampler = LeapHybridSampler(profile=run_profile)
+  # run the workflow
+  t0 = dt.datetime.now()
+  if tlimit > 0:
+    solution = sampler.sample(bqm, time_limit=tlimit)
+  else:
+    solution = sampler.sample(bqm)
+  wtime = dt.datetime.now() - t0
+
+  result['wall_clock_time'] = wtime
+
+  # Collect QPU time and total time used
+  result['run_time'] = solution.info['run_time']
+  result['qpu_time'] = solution.info['qpu_access_time']
+
+  # Collect first energy and num_occ, num diff solutions, and total solutions
+  first = True
+  ndiff = 0
+  total_solns = 0
+  for sample, energy, num_occurrences in solution.data():
+    #print(sample, "Energy: ", energy, "Occurrences: ", num_occurrences)
+    if first == True:
+      result['energy'] = energy
+      result['num_occ'] = num_occurrences
+      first = False
+    ndiff += 1
+    total_solns += num_occurrences
+  result['num_diff_solns'] = ndiff
+  result['total_solns'] = total_solns
+
+  print(solution)
+  xx = solution.samples()
+  ss = np.zeros([1,num_nodes])
+  for i in range(num_nodes):
+    ss[0,i] = xx[0,i]
+
+  print('\nss = ', ss)
+
+  return ss
+
+
 def cluster(Q, k, embedding, qsize, run_label, run_profile, result):
 
   # Start with Q
@@ -548,3 +596,13 @@ def clusterHybrid(Q, k, sub_qsize, run_label, run_profile, result):
 
   return ss
 
+def clusterLeapHybrid(Q, k, run_label, run_profile, tlimit, result):
+
+  # Start with Q
+  qsize = Q.shape[1]
+  print('\n Q size = ', qsize)
+
+  # Cluster into k parts using LeapHybrid/DWave ocean
+  ss = runDwaveLeapHybrid(Q, qsize, k, run_label, run_profile, tlimit, result)
+
+  return ss

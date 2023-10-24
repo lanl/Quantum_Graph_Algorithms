@@ -97,7 +97,6 @@ if __name__== '__main__':
   result['edges'] = num_edges
   result['size'] = num_nodes * num_parts
   result['solver'] = 'DWAVE_LeapHybrid'
-  #result['subqubo_size'] = qsize
   result['alpha'] = alpha0
   result['beta'] = beta0
   result['gamma'] = gamma0
