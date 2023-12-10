@@ -112,6 +112,8 @@ if __name__== '__main__':
   result['num_clusters_found'] = nparts
   print(flush=True)
 
+  GFU.write_partFile(part_number, num_nodes, nparts)
+
   GFU.write_resultFile(result)
 
   # Show plot of parts if requested

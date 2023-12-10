@@ -3,10 +3,10 @@ import numpy.linalg as la
 import networkx as nx
 
 #from dwave_qbsolv import QBSolv
-from dwave.system.samplers import DWaveSampler
-from dwave.system.composites import EmbeddingComposite, FixedEmbeddingComposite
-from dimod.reference.samplers import ExactSolver
-import minorminer
+#from dwave.system.samplers import DWaveSampler
+#from dwave.system.composites import EmbeddingComposite, FixedEmbeddingComposite
+#from dimod.reference.samplers import ExactSolver
+#import minorminer
 
 from scipy.io import mmread
 import matplotlib.pyplot as plt
@@ -234,6 +234,37 @@ def showClusters(part_number, graph):
 
     nx.draw_networkx_edges(graph, pos, alpha=0.5)
     plt.show()
+
+
+def calc_density(graph, num_nodes, result):
+
+    # Get adjacency matrix
+    A = nx.adjacency_matrix(graph)
+    A.todense()
+
+    nnz = A[A != 0].size
+    #nnz = np.count_nonzero(A)
+    print('\nNNZ = ', nnz)
+    result['NNZ'] = nnz
+    density = float(nnz/(num_nodes*num_nodes))
+    sparsity = float(1.0 - density)
+    print('\ndensity = ', density)
+    print('\nsparsity= ', sparsity)
+    result['density'] = density
+    result['sparsity'] = sparsity
+
+
+def write_partFile(part_num, num_nodes, nparts):
+
+    pname = "comm" + str(nparts) + ".txt"
+    PartFile = open(pname, "w")
+    string=str(num_nodes)+"       "+'\n'
+    PartFile.write(string)
+    for i in range(num_nodes):
+      string = str(i)+"  "+str(part_num[i])+"\n"
+      PartFile.write(string)
+
+    PartFile.close()
 
 
 def write_resultFile(result):
